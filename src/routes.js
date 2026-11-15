@@ -9,6 +9,7 @@ import {
   searchScreen,
 } from './screens/app-screens.js';
 import { notFoundScreen } from './screens/not-found.js';
+import { styleguideScreen } from './screens/styleguide.js';
 
 export const routes = [
   { path: '/login', screen: loginScreen, access: 'guest', title: 'Вход' },
@@ -19,5 +20,6 @@ export const routes = [
   { path: '/dialogs/:dialogId', screen: chatScreen, access: 'auth', title: 'Диалог' },
   { path: '/dialogs/:dialogId/key', screen: dialogKeyScreen, access: 'auth', title: 'Ключ диалога' },
   { path: '/account', screen: accountScreen, access: 'auth', title: 'Аккаунт' },
-  { path: '*',screen: notFoundScreen, access: 'any', title: 'Не найдено' },
+  { path: '/ui', screen: styleguideScreen, access: 'any', title: 'Дизайн-система' },
+  { path: '*', screen: notFoundScreen, access: 'any', title: 'Не найдено' },
 ];

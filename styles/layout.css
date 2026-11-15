@@ -1,0 +1,124 @@
+/* Каркас страниц */
+
+.page {
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-10);
+}
+
+.page--centered {
+  display: flex;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.back-link {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+/* Вертикальный ритм: равные отступы между детьми */
+.stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.stack--sm {
+  gap: var(--space-2);
+}
+
+.stack--lg {
+  gap: var(--space-6);
+}
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Шапка приложения */
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: var(--space-2) var(--space-4);
+  padding-top: max(var(--space-2), env(safe-area-inset-top));
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-header__brand {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+
+.app-header__brand:hover {
+  color: var(--color-text);
+}
+
+.app-header__logo {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--color-accent-text);
+  font-size: var(--text-sm);
+  background: var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+.app-header__account {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.app-header__id {
+  overflow: hidden;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+}
+
+.app-header__id:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
