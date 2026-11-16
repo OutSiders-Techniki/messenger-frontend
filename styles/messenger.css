@@ -733,3 +733,72 @@ a.sidebar__search:hover {
     padding-left: var(--space-2);
   }
 }
+
+/* ---------- Поиск собеседника ---------- */
+
+.search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: start;
+}
+
+/* Кнопка выравнивается по полю ввода, а не по подписи над ним */
+.search-form > .btn {
+  margin-top: calc(var(--text-sm) * var(--leading-normal) + var(--space-1));
+}
+
+.search-result:empty {
+  display: none;
+}
+
+.search-result .empty {
+  padding: var(--space-8) var(--space-4);
+}
+
+.user-card {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  padding: var(--space-6);
+  text-align: center;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  animation: card-in var(--duration-normal) var(--easing);
+}
+
+.user-card__info {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.user-card__id {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  user-select: all;
+}
+
+.user-card__note {
+  max-width: 34ch;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (max-width: 480px) {
+  .search-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .search-form > .btn {
+    margin-top: 0;
+  }
+}

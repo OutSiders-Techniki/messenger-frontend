@@ -6,10 +6,10 @@ import {
   chatScreen,
   dialogKeyScreen,
   dialogsScreen,
-  searchScreen,
 } from './screens/app-screens.js';
 import { notFoundScreen } from './screens/not-found.js';
 import { previewScreen } from './screens/preview.js';
+import { searchScreen } from './screens/search.js';
 import { styleguideScreen } from './screens/styleguide.js';
 
 export const routes = [

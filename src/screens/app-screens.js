@@ -17,16 +17,6 @@ export function dialogsScreen() {
   return shell(paneEmpty('Выберите диалог или найдите собеседника по ID'), 'list');
 }
 
-// TODO(MSG-44): поиск по точному публичному ID и создание диалога.
-export function searchScreen() {
-  return shell(
-    pane(
-      { title: 'Новый диалог', subtitle: 'Поиск по точному ID' },
-      h('div', { class: 'card stack' }, h('p', { class: 'muted' }, 'Здесь будет поиск собеседника по точному ID.')),
-    ),
-  );
-}
-
 // TODO(MSG-47): лента сообщений, отправка, вложения.
 export function chatScreen({ params }) {
   const keyPath = `/dialogs/${encodeURIComponent(params.dialogId)}/key`;

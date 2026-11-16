@@ -20,11 +20,9 @@ export function normalizePublicId(value) {
 export function validatePublicId(value) {
   const id = normalizePublicId(value);
   if (!id) return 'Введите ID';
-  if (!ID_CHARS.test(id)) {
-    // Частая ошибка — перепутать похожие символы.
-    if (/[01ILOU]/.test(id)) return 'В ID нет символов 0, 1, I, L, O и U — проверьте похожие буквы и цифры';
-    return 'ID состоит только из латинских букв и цифр';
-  }
+  if (/[^A-Z0-9]/.test(id)) return 'ID состоит только из латинских букв и цифр';
+  // Частая ошибка — перепутать похожие символы.
+  if (!ID_CHARS.test(id)) return 'В ID нет символов 0, 1, I, L, O и U — проверьте похожие буквы и цифры';
   if (id.length !== PUBLIC_ID_LENGTH) return `ID состоит из ${PUBLIC_ID_LENGTH} символов, сейчас ${id.length}`;
   return null;
 }
