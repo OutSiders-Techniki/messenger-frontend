@@ -6,6 +6,7 @@
 
 import { api, ApiError, errorMessage } from '../api/index.js';
 import { normalizePublicId, validatePublicId } from '../lib/validation.js';
+import { dialogsStore } from '../state/dialogs.js';
 import { session } from '../state/session.js';
 import { alert, avatar, button, emptyState, field, formatPublicId, loading, setBusy } from '../ui/components.js';
 import { h } from '../ui/dom.js';
@@ -37,23 +38,11 @@ export function searchScreen({ navigate, onDispose }) {
     submit,
   );
 
-  // Диалоги пользователя — чтобы для уже знакомого собеседника
-  // предложить «Открыть диалог», а не «Создать» (UC-04 A3).
-  let knownDialogs = null;
-  const lifetime = new AbortController();
-  api.dialogs
-    .list({ signal: lifetime.signal })
-    .then((list) => {
-      knownDialogs = list;
-    })
-    .catch(() => {
-      // Не страшно: сервер сам вернёт существующий диалог при создании.
-    });
-
+  // Список диалогов нужен, чтобы для уже знакомого собеседника предложить
+  // «Открыть диалог», а не «Создать» (UC-04 A3). Его грузит боковая панель.
   let searchController = null;
   let stopCooldown = null;
   onDispose(() => {
-    lifetime.abort();
     searchController?.abort();
     stopCooldown?.();
   });
@@ -123,7 +112,7 @@ export function searchScreen({ navigate, onDispose }) {
 
   function showFound(user) {
     const isMe = user.publicId === me;
-    const existing = knownDialogs?.find((d) => d.peerPublicId === user.publicId);
+    const existing = dialogsStore.findByPeer(user.publicId);
 
     let action;
     let note;
@@ -172,7 +161,9 @@ export function searchScreen({ navigate, onDispose }) {
       const dialog = await api.dialogs.create(peerPublicId);
       // Сервер возвращает существующий диалог вместо дубля (TC-11-N1):
       // тогда открываем переписку, а для нового — экран ключа.
-      const wasKnown = knownDialogs?.some((d) => d.id === dialog.id);
+      const wasKnown = Boolean(dialogsStore.find(dialog.id));
+      // Новый диалог сразу появляется в списке, без перезагрузки.
+      dialogsStore.upsert(dialog);
       const path = `/dialogs/${encodeURIComponent(dialog.id)}`;
       navigate(wasKnown ? path : `${path}/key`);
     } catch (err) {

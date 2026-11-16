@@ -1,4 +1,5 @@
-import { avatar, emptyState, formatPublicId, loading } from './components.js';
+import { avatar, formatPublicId, loading } from './components.js';
+import { dialogList } from './dialog-list.js';
 import { h } from './dom.js';
 import { icon } from './icons.js';
 
@@ -55,11 +56,12 @@ export function guestLayout(...content) {
 
 // view: 'list' — на телефоне виден список диалогов, 'pane' — правая часть.
 // На компьютере обе колонки видны всегда.
-export function appShell({ user, view = 'pane', dialogs, content }) {
-  return h('div', { class: 'messenger', 'data-view': view }, sidebar({ user, dialogs }), content);
+// activeDialogId — какой диалог подсветить в списке.
+export function appShell({ user, view = 'pane', activeDialogId = null, content }) {
+  return h('div', { class: 'messenger', 'data-view': view }, sidebar({ user, activeDialogId }), content);
 }
 
-function sidebar({ user, dialogs }) {
+function sidebar({ user, activeDialogId }) {
   const publicId = user?.publicId ?? '';
   return h(
     'aside',
@@ -85,15 +87,7 @@ function sidebar({ user, dialogs }) {
       ),
     ),
     h('a', { href: '#/search', class: 'sidebar__search' }, icon('search', { size: 18 }), h('span', null, 'Найти собеседника по ID')),
-    h(
-      'div',
-      { class: 'sidebar__body' },
-      dialogs ??
-        emptyState({
-          title: 'Диалогов пока нет',
-          text: 'Найдите собеседника по ID, а ключ передайте при встрече.',
-        }),
-    ),
+    h('div', { class: 'sidebar__body' }, dialogList({ activeId: activeDialogId })),
   );
 }
 
