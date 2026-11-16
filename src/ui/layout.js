@@ -1,4 +1,5 @@
 import { avatar, formatPublicId, loading } from './components.js';
+import { preferences } from '../state/preferences.js';
 import { dialogList } from './dialog-list.js';
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -57,11 +58,36 @@ export function guestLayout(...content) {
 // view: 'list' — на телефоне виден список диалогов, 'pane' — правая часть.
 // На компьютере обе колонки видны всегда.
 // activeDialogId — какой диалог подсветить в списке.
+// Боковую панель на компьютере можно свернуть в узкую полоску с аватарами.
 export function appShell({ user, view = 'pane', activeDialogId = null, content }) {
-  return h('div', { class: 'messenger', 'data-view': view }, sidebar({ user, activeDialogId }), content);
+  const root = h(
+    'div',
+    { class: 'messenger', 'data-view': view, 'data-sidebar': preferences.sidebarCollapsed ? 'collapsed' : 'expanded' },
+    sidebar({ user, activeDialogId, onToggle: toggle }),
+    content,
+  );
+
+  function toggle() {
+    const collapsed = root.dataset.sidebar !== 'collapsed';
+    preferences.sidebarCollapsed = collapsed;
+    root.dataset.sidebar = collapsed ? 'collapsed' : 'expanded';
+    syncToggle(root.querySelector('.sidebar__toggle'), collapsed);
+  }
+
+  syncToggle(root.querySelector('.sidebar__toggle'), preferences.sidebarCollapsed);
+  return root;
 }
 
-function sidebar({ user, activeDialogId }) {
+function syncToggle(btn, collapsed) {
+  if (!btn) return;
+  const label = collapsed ? 'Развернуть список диалогов' : 'Свернуть список диалогов';
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('title', label);
+  btn.setAttribute('aria-expanded', String(!collapsed));
+  btn.replaceChildren(icon(collapsed ? 'panel-right' : 'panel-left'));
+}
+
+function sidebar({ user, activeDialogId, onToggle }) {
   const publicId = user?.publicId ?? '';
   return h(
     'aside',
@@ -81,12 +107,22 @@ function sidebar({ user, activeDialogId }) {
       ),
       h('p', { class: 'sidebar__title' }, 'Сообщения'),
       h(
-        'a',
-        { href: '#/search', class: 'btn btn--ghost btn--icon', title: 'Новый диалог', 'aria-label': 'Новый диалог' },
-        icon('plus'),
+        'div',
+        { class: 'sidebar__actions' },
+        h(
+          'a',
+          { href: '#/search', class: 'btn btn--ghost btn--icon', title: 'Новый диалог', 'aria-label': 'Новый диалог' },
+          icon('plus'),
+        ),
+        h('button', { type: 'button', class: 'btn btn--ghost btn--icon sidebar__toggle', onClick: onToggle }),
       ),
     ),
-    h('a', { href: '#/search', class: 'sidebar__search' }, icon('search', { size: 18 }), h('span', null, 'Найти собеседника по ID')),
+    h(
+      'a',
+      { href: '#/search', class: 'sidebar__search', title: 'Найти собеседника по ID' },
+      icon('search', { size: 18 }),
+      h('span', { class: 'sidebar__search-text' }, 'Найти собеседника по ID'),
+    ),
     h('div', { class: 'sidebar__body' }, dialogList({ activeId: activeDialogId })),
   );
 }

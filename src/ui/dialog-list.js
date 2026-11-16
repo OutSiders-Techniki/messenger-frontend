@@ -79,6 +79,8 @@ function item(dialog, active) {
       {
         href: `#/dialogs/${encodeURIComponent(dialog.id)}`,
         class: `dialog-item${active ? ' dialog-item--active' : ''}`,
+        // В свёрнутой панели видна только аватарка — ID показываем подсказкой.
+        title: formatPublicId(dialog.peerPublicId),
         'aria-current': active ? 'page' : null,
       },
       avatar(dialog.peerPublicId),

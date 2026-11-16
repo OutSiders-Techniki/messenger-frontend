@@ -23,6 +23,9 @@ const paths = {
   search: ['M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z', 'M21 21l-4.3-4.3'],
   'log-out': ['M9 21H5V3h4', 'M16 17l5-5-5-5', 'M21 12H9'],
   alert: ['M12 3l10 18H2L12 3Z', 'M12 10v4', 'M12 17.5v.5'],
+  'panel-left': ['M4 4h16v16H4z', 'M9 4v16', 'M15 10l-2 2 2 2'],
+  'panel-right': ['M4 4h16v16H4z', 'M9 4v16', 'M13 10l2 2-2 2'],
+  sparkles: ['M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z', 'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z'],
 };
 
 export function icon(name, { size = 20, label } = {}) {

@@ -69,3 +69,95 @@ html[data-api-mode="mock"] body::after {
   border-radius: var(--radius-full);
   pointer-events: none;
 }
+
+/* ---------- Выбор оформления ---------- */
+
+.look-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.look-picker__legend {
+  grid-column: 1 / -1;
+  margin-bottom: var(--space-3);
+  padding: 0;
+  font-weight: var(--weight-semibold);
+}
+
+.look-option {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--easing);
+}
+
+.look-option:has(.look-option__input:checked) {
+  border-color: var(--color-accent-fill);
+}
+
+.look-option:has(.look-option__input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.look-option__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.look-option__preview {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 5px;
+  height: 64px;
+  margin-bottom: var(--space-2);
+  padding: 6px;
+  border-radius: var(--radius-md);
+}
+
+.look-option__panel {
+  border-radius: 6px;
+}
+
+.look-option--default .look-option__preview {
+  background: #e4e7f0;
+}
+
+.look-option--default .look-option__panel {
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.look-option--glass .look-option__preview {
+  background:
+    radial-gradient(60% 80% at 15% 20%, #8f7bff, transparent 70%),
+    radial-gradient(50% 70% at 85% 80%, #4fd1e8, transparent 70%),
+    radial-gradient(50% 70% at 80% 10%, #ff8ccf, transparent 70%),
+    #e9e6ff;
+}
+
+.look-option--glass .look-option__panel {
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0.3));
+  border: 1px solid rgb(255 255 255 / 0.7);
+  border-radius: 8px;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.look-option__title {
+  font-weight: var(--weight-semibold);
+}
+
+.look-option__text {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}

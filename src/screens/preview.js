@@ -4,6 +4,7 @@
 import { avatar, button, formatPublicId } from '../ui/components.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
+import { preferences } from '../state/preferences.js';
 
 const ME = 'MX4T7KQ9ZP2C';
 
@@ -277,6 +278,18 @@ export function previewScreen() {
         { class: 'sidebar__head' },
         h('a', { href: '#/preview', class: 'sidebar__me', 'aria-label': `Аккаунт, ваш ID ${formatPublicId(ME)}` }, avatar(ME, { size: 'sm' })),
         h('h1', { class: 'sidebar__title' }, 'Сообщения'),
+        button(
+          {
+            variant: 'ghost',
+            icon: true,
+            title: 'Переключить оформление',
+            'aria-label': 'Переключить оформление: стандартное или Liquid Glass',
+            onClick() {
+              preferences.look = preferences.look === 'glass' ? 'default' : 'glass';
+            },
+          },
+          icon('sparkles'),
+        ),
         button({ variant: 'ghost', icon: true, 'aria-label': 'Новый диалог' }, icon('plus')),
       ),
       h(

@@ -885,3 +885,106 @@ a.dialog-item {
   width: 36px;
   height: 36px;
 }
+
+/* ---------- Свёрнутая боковая панель (только компьютер) ---------- */
+
+.sidebar__actions {
+  display: flex;
+  align-items: center;
+}
+
+.sidebar__toggle {
+  color: var(--color-text-muted);
+}
+
+.messenger {
+  --rail-width: 76px;
+  transition: grid-template-columns var(--duration-normal) var(--easing);
+}
+
+@media (min-width: 900px) {
+  .messenger[data-sidebar="collapsed"] {
+    grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  }
+
+  .messenger[data-sidebar="collapsed"] .sidebar__head {
+    flex-direction: column;
+    gap: var(--space-2);
+    height: auto;
+    padding: var(--space-3) 0;
+  }
+
+  .messenger[data-sidebar="collapsed"] .sidebar__title,
+  .messenger[data-sidebar="collapsed"] .sidebar__search-text,
+  .messenger[data-sidebar="collapsed"] .dialog-item__main,
+  .messenger[data-sidebar="collapsed"] .empty__text,
+  .messenger[data-sidebar="collapsed"] .empty__title,
+  .messenger[data-sidebar="collapsed"] .dialog-list__error p {
+    display: none;
+  }
+
+  .messenger[data-sidebar="collapsed"] .sidebar__actions {
+    flex-direction: column-reverse;
+    gap: var(--space-1);
+  }
+
+  .messenger[data-sidebar="collapsed"] .sidebar__search {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: 0 auto var(--space-2);
+    padding: 0;
+  }
+
+  .messenger[data-sidebar="collapsed"] .dialog-list {
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .messenger[data-sidebar="collapsed"] .dialog-item {
+    position: relative;
+    justify-content: center;
+    width: 56px;
+    margin: 0 auto 2px;
+    padding: 6px;
+  }
+
+  /* Активный диалог в полоске — акцентная черта слева */
+  .messenger[data-sidebar="collapsed"] .dialog-item--active::before {
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: -10px;
+    width: 4px;
+    content: "";
+    background: var(--color-accent-fill);
+    border-radius: var(--radius-full);
+  }
+
+  .messenger[data-sidebar="collapsed"] .empty {
+    padding: var(--space-4) 0;
+  }
+
+  .messenger[data-sidebar="collapsed"] .empty .btn {
+    width: 44px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .messenger[data-sidebar="collapsed"] .dialog-list__error {
+    margin: var(--space-2);
+    padding: var(--space-2);
+  }
+
+  .messenger[data-sidebar="collapsed"] .dialog-list__error .btn {
+    padding: 0 var(--space-2);
+    font-size: var(--text-xs);
+  }
+}
+
+/* На телефоне кнопка сворачивания не нужна */
+@media (max-width: 899px) {
+  .sidebar__toggle {
+    display: none;
+  }
+}

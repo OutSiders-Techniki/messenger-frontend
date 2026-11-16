@@ -8,6 +8,7 @@ import { alert, avatar, button, formatPublicId } from '../ui/components.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { appShell, pane, paneEmpty } from '../ui/layout.js';
+import { lookPicker } from '../ui/look-picker.js';
 
 function shell(content, { view = 'pane', activeDialogId = null } = {}) {
   return appShell({ user: session.user, view, activeDialogId, content });
@@ -104,6 +105,7 @@ export function accountScreen() {
         h('p', { class: 'profile__id' }, formatPublicId(publicId)),
         h('p', { class: 'muted text-sm' }, 'Ваш ID — по нему вы входите, а собеседники находят вас.'),
       ),
+      h('section', { class: 'card' }, lookPicker()),
       alert({ tone: 'info' }, 'Здесь будут настройки хранения ключей на этом устройстве.'),
       button({ variant: 'secondary', block: true, onClick: logout }, icon('log-out', { size: 18 }), 'Выйти'),
     ),
