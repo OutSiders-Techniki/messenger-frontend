@@ -52,3 +52,20 @@
 .sg-color--danger { background: var(--color-danger); }
 .sg-color--warning { background: var(--color-warning); }
 .sg-color--success { background: var(--color-success); }
+
+/* ---------- Метка режима заглушки API (только dev) ---------- */
+
+html[data-api-mode="mock"] body::after {
+  position: fixed;
+  bottom: max(var(--space-2), env(safe-area-inset-bottom));
+  left: var(--space-2);
+  z-index: 100;
+  padding: 2px var(--space-2);
+  color: var(--color-warning);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  content: "Заглушка API";
+  background: var(--color-warning-soft);
+  border-radius: var(--radius-full);
+  pointer-events: none;
+}

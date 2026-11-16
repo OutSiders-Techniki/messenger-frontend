@@ -1,14 +1,15 @@
-import { api, ApiError } from '../api/index.js';
+import { api } from '../api/index.js';
 import { session } from '../state/session.js';
 
 // Выход: сначала убираем локальное состояние (роутер сразу уведёт на вход),
-// затем завершаем сессию на сервере.
-// TODO(MSG-39): сообщение, если сервер не подтвердил выход; синхронизация вкладок.
+// затем завершаем сессию на сервере. По UC-03 ошибка сети при выходе не
+// мешает: локальные данные уже очищены, серверная сессия истечёт сама.
+// TODO(MSG-39): синхронизация выхода между вкладками.
 export async function logout() {
   session.clear();
   try {
-    await api.logout();
-  } catch (err) {
-    if (!(err instanceof ApiError && err.status === 401)) console.error(err);
+    await api.auth.logout();
+  } catch {
+    // Сессия уже недействительна или нет связи — пользователь всё равно на экране входа.
   }
 }
