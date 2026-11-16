@@ -2,7 +2,7 @@
 // TODO(MSG-42): кнопка «Скопировать ID» с запасным вариантом без Clipboard API.
 
 import { putFlash, takeFlash } from '../state/flash.js';
-import { alert, button, loading } from '../ui/components.js';
+import { alert, button, formatPublicId, loading } from '../ui/components.js';
 import { h } from '../ui/dom.js';
 import { guestLayout } from '../ui/layout.js';
 
@@ -18,7 +18,7 @@ export function registerDoneScreen({ navigate }) {
   return guestLayout(
     h('h1', null, 'Аккаунт создан'),
     h('p', { class: 'muted' }, 'Ваш ID:'),
-    h('p', { class: 'code-block' }, publicId),
+    h('p', { class: 'code-block' }, formatPublicId(publicId)),
     alert(
       { tone: 'warning', title: 'Сохраните ID' },
       'Он нужен для входа и чтобы собеседники нашли вас. Восстановить его нельзя.',

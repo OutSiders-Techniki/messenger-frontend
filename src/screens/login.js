@@ -48,7 +48,8 @@ export function loginScreen({ navigate }) {
 
     try {
       const user = await api.login({
-        publicId: publicId.input.value.trim(),
+        // ID показываем группами через дефис, серверу отправляем без них.
+        publicId: publicId.input.value.replace(/[\s-]/g, '').toUpperCase(),
         password: password.input.value,
       });
       session.set(user);

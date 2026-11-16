@@ -167,10 +167,21 @@ export function emptyState({ title, text, action } = {}) {
 
 // ---------- Аватар по ID ----------
 
-// Публичный ID — единственное, что известно о собеседнике,
-// поэтому «аватар» строится из первых двух символов ID.
-export function avatar(publicId = '') {
-  return h('span', { class: 'avatar', 'aria-hidden': 'true' }, publicId.slice(0, 2));
+const AVATAR_COLORS = 8;
+
+// Публичный ID — единственное, что известно о собеседнике, поэтому аватар
+// строится из ID: первые два символа и цвет, который всегда один для ID.
+export function avatar(publicId = '', { size } = {}) {
+  let hash = 0;
+  for (const char of publicId) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  const classes = ['avatar', `avatar--c${hash % AVATAR_COLORS}`];
+  if (size) classes.push(`avatar--${size}`);
+  return h('span', { class: classes.join(' '), 'aria-hidden': 'true' }, publicId.slice(0, 2));
+}
+
+// ID удобнее читать и диктовать группами: K7PX-QM2D-9RT4.
+export function formatPublicId(publicId = '') {
+  return publicId.match(/.{1,4}/g)?.join('-') ?? '';
 }
 
 // ---------- Модальное окно подтверждения ----------
