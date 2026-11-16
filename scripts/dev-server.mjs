@@ -94,7 +94,7 @@ async function resolveFile(urlPath) {
   return filePath;
 }
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   const url = req.url ?? '/';
 
   // Режим API для фронтенда. На боевом сервере этого адреса нет.
@@ -131,7 +131,18 @@ createServer(async (req, res) => {
     res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Server error');
   }
-}).listen(port, () => {
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Порт ${port} уже занят — скорее всего, dev-сервер уже запущен в другом терминале.`);
+    console.error(`Остановите его (Ctrl+C) или запустите на другом порту: $env:PORT=5180; npm run dev`);
+    process.exit(1);
+  }
+  throw err;
+});
+
+server.listen(port, () => {
   console.log(`Dev server: http://localhost:${port}`);
   console.log(apiTarget ? `API: proxy to ${apiTarget.origin}` : 'API: mock (start with --api=URL for the real backend)');
 });
