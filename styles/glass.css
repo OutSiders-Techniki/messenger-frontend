@@ -1,7 +1,7 @@
 /*
  * Оформление «Liquid Glass» — включается атрибутом data-look="glass" на <html>.
  *
- * Идея: под интерфейсом живой цветной фон, а панели — полупрозрачное
+ * Идея: под интерфейсом мягкий фон «Аврора», а панели — полупрозрачное
  * «стекло» с размытием, бликом по верхней кромке и мягкой тенью.
  * Панели парят над фоном с отступами и большими скруглениями.
  * Без backdrop-filter (старые браузеры) панели просто становятся
@@ -44,48 +44,56 @@
   }
 }
 
-/* ---------- Живой фон ---------- */
+/* ---------- Фон «Аврора» ---------- */
 
-[data-look="glass"] body {
-  min-height: 100dvh;
-  background:
-    radial-gradient(40% 50% at 12% 18%, #8f7bff 0%, transparent 70%),
-    radial-gradient(35% 45% at 85% 12%, #ff8ccf 0%, transparent 70%),
-    radial-gradient(45% 55% at 78% 88%, #4fd1e8 0%, transparent 70%),
-    radial-gradient(40% 50% at 18% 85%, #ffc46b 0%, transparent 70%),
-    linear-gradient(135deg, #e9e6ff 0%, #f5e8ff 50%, #e3f4ff 100%);
-  background-attachment: fixed;
-}
+/*
+ * Широкие мягкие волны в оттенках фирменного фиолетового и голубого.
+ * Нижний слой — плавный перелив, верхний (::before) — полупрозрачные
+ * диагональные полосы, которые очень медленно сдвигаются.
+ */
 
-/* Медленно плавающие цветные пятна — фон «дышит» под стеклом */
-[data-look="glass"] body::before {
-  position: fixed;
-  inset: -20%;
-  z-index: -1;
-  content: "";
-  background:
-    radial-gradient(18% 22% at 30% 40%, rgb(124 92 255 / 0.55), transparent 70%),
-    radial-gradient(16% 20% at 70% 60%, rgb(255 110 180 / 0.45), transparent 70%);
-  filter: blur(30px);
-  animation: glass-drift 26s ease-in-out infinite alternate;
-  pointer-events: none;
+[data-look="glass"] {
+  --aurora-base: linear-gradient(115deg, #ecebfd 0%, #dcd8fb 22%, #f3ecff 40%, #d9e6fb 60%, #efeaff 78%, #dad5fa 100%);
+  --aurora-band-1: rgb(120 108 240 / 0.16);
+  --aurora-band-2: rgb(110 170 240 / 0.14);
+  --aurora-band-3: rgb(190 140 245 / 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
-  [data-look="glass"] body {
-    background:
-      radial-gradient(40% 50% at 12% 18%, #3b2a9e 0%, transparent 70%),
-      radial-gradient(35% 45% at 85% 12%, #7a1f63 0%, transparent 70%),
-      radial-gradient(45% 55% at 78% 88%, #0d5a72 0%, transparent 70%),
-      radial-gradient(40% 50% at 18% 85%, #5a3a10 0%, transparent 70%),
-      linear-gradient(135deg, #0b0b1a 0%, #120d22 50%, #071420 100%);
-    background-attachment: fixed;
+  [data-look="glass"] {
+    --aurora-base: linear-gradient(115deg, #0c0b1d 0%, #19143d 24%, #0f1230 44%, #161d45 64%, #1c1440 82%, #0b0c1c 100%);
+    --aurora-band-1: rgb(120 100 255 / 0.16);
+    --aurora-band-2: rgb(70 140 230 / 0.12);
+    --aurora-band-3: rgb(170 110 240 / 0.1);
   }
 }
 
-@keyframes glass-drift {
+[data-look="glass"] body {
+  min-height: 100dvh;
+  background: var(--aurora-base);
+  background-attachment: fixed;
+}
+
+[data-look="glass"] body::before {
+  position: fixed;
+  inset: -10%;
+  z-index: -1;
+  content: "";
+  background:
+    linear-gradient(115deg, transparent 8%, var(--aurora-band-1) 20%, transparent 34%),
+    linear-gradient(115deg, transparent 40%, var(--aurora-band-2) 54%, transparent 68%),
+    linear-gradient(115deg, transparent 70%, var(--aurora-band-3) 82%, transparent 94%);
+  background-size: 140% 140%;
+  animation: aurora-flow 40s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes aurora-flow {
+  from {
+    background-position: 0% 0%;
+  }
   to {
-    transform: translate(6%, -4%) rotate(8deg) scale(1.08);
+    background-position: 100% 60%;
   }
 }
 

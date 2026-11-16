@@ -138,11 +138,7 @@ html[data-api-mode="mock"] body::after {
 }
 
 .look-option--glass .look-option__preview {
-  background:
-    radial-gradient(60% 80% at 15% 20%, #8f7bff, transparent 70%),
-    radial-gradient(50% 70% at 85% 80%, #4fd1e8, transparent 70%),
-    radial-gradient(50% 70% at 80% 10%, #ff8ccf, transparent 70%),
-    #e9e6ff;
+  background: linear-gradient(115deg, #ecebfd 0%, #d9d5fb 25%, #f3ecff 45%, #d7e7fb 65%, #dcd7fa 100%);
 }
 
 .look-option--glass .look-option__panel {

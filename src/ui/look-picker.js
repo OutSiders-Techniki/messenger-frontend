@@ -6,7 +6,7 @@ import { h } from './dom.js';
 
 const LABELS = {
   default: ['Стандартное', 'Плотные панели, спокойный фон'],
-  glass: ['Liquid Glass', 'Полупрозрачное стекло над живым фоном'],
+  glass: ['Liquid Glass', 'Полупрозрачное стекло над фоном «Аврора»'],
 };
 
 export function lookPicker() {
