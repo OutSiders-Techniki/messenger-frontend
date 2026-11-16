@@ -61,17 +61,9 @@ export function dialogList({ activeId = null } = {}) {
     );
   }
 
-  // Панель пересоздаётся при каждом переходе. Подписка снимается сама,
-  // когда эта панель уже побывала на странице и была убрана.
-  let mounted = false;
-  const unsubscribe = dialogsStore.subscribe(() => {
-    if (root.isConnected) mounted = true;
-    else if (mounted) {
-      unsubscribe();
-      return;
-    }
-    render();
-  });
+  // Панель пересоздаётся при каждом переходе; подписка старой панели
+  // снимается, когда та исчезает со страницы.
+  dialogsStore.subscribe(render, { owner: root });
 
   render();
   queueMicrotask(() => dialogsStore.load());

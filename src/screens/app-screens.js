@@ -36,15 +36,7 @@ function dialogHeader(dialogId) {
     }
   }
 
-  let mounted = false;
-  const unsubscribe = dialogsStore.subscribe(() => {
-    if (lead.isConnected) mounted = true;
-    else if (mounted) {
-      unsubscribe();
-      return;
-    }
-    render();
-  });
+  dialogsStore.subscribe(render, { owner: lead });
   render();
 
   return { lead, title, subtitle };

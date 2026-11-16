@@ -7,22 +7,42 @@ import { session } from './session.js';
 
 // Через сколько считать список устаревшим и тихо обновить при переходе.
 const STALE_MS = 30_000;
+// Пока нет событий SignalR, список опрашивается, если вкладка на экране.
+// TODO(MSG-48): заменить опрос событием DialogUpdated от сервера.
+const POLL_MS = 15_000;
 
 let items = [];
 let status = 'idle'; // idle | loading | ready | error
 let error = null;
 let loadedAt = 0;
 let pending = null;
-const listeners = new Set();
+// listener → элемент страницы, которому он принадлежит (или null).
+const listeners = new Map();
+const seenOwners = new WeakSet();
+
+// Убираем подписки элементов, которые уже были на странице и исчезли
+// (экран сменился). Ещё не вставленные элементы не трогаем.
+function prune() {
+  for (const [listener, owner] of listeners) {
+    if (!owner) continue;
+    if (owner.isConnected) seenOwners.add(owner);
+    else if (seenOwners.has(owner)) listeners.delete(listener);
+  }
+}
 
 function emit() {
-  for (const listener of [...listeners]) listener();
+  prune();
+  for (const listener of [...listeners.keys()]) listener();
 }
 
 // Новые сверху. Когда бэкенд начнёт отдавать время последнего сообщения,
 // сортировать нужно будет по нему.
 function sorted(list) {
   return [...list].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
+function sameList(a, b) {
+  return a.length === b.length && a.every((d, i) => d.id === b[i].id && d.peerPublicId === b[i].peerPublicId);
 }
 
 export const dialogsStore = {
@@ -63,11 +83,14 @@ export const dialogsStore = {
       .then((list) => {
         // Пока шёл запрос, пользователь вышел или сменил аккаунт.
         if (generation !== session.generation) return items;
-        items = sorted(list);
+        const next = sorted(list);
+        const changed = status !== 'ready' || !sameList(items, next);
+        items = next;
         status = 'ready';
         error = null;
         loadedAt = Date.now();
-        emit();
+        // Без изменений не перерисовываем: не сбиваем фокус и прокрутку.
+        if (changed) emit();
         return items;
       })
       .catch((err) => {
@@ -97,11 +120,27 @@ export const dialogsStore = {
     emit();
   },
 
-  subscribe(listener) {
-    listeners.add(listener);
+  // owner — элемент, при исчезновении которого со страницы подписка снимается сама.
+  subscribe(listener, { owner = null } = {}) {
+    prune();
+    listeners.set(listener, owner);
     return () => listeners.delete(listener);
   },
 };
+
+// ---------- Автообновление ----------
+
+function refreshIfVisible() {
+  prune();
+  if (session.isAuthenticated && document.visibilityState === 'visible' && listeners.size > 0) {
+    dialogsStore.load({ force: true });
+  }
+}
+
+setInterval(refreshIfVisible, POLL_MS);
+// Вернулись на вкладку — сразу проверяем, не появились ли новые диалоги.
+document.addEventListener('visibilitychange', refreshIfVisible);
+window.addEventListener('focus', refreshIfVisible);
 
 // Выход или смена аккаунта — чужой список больше не показываем.
 session.subscribe(() => {
