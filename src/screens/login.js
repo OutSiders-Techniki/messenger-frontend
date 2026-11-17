@@ -1,7 +1,7 @@
 // Вход по публичному ID и паролю.
 // TODO(MSG-42): валидация полей, состояния ошибок 429/сети.
 
-import { api, ApiError } from '../api/index.js';
+import { api, errorMessage } from '../api/index.js';
 import { session } from '../state/session.js';
 import { takeFlash } from '../state/flash.js';
 import { button, field, setBusy } from '../ui/components.js';
@@ -47,7 +47,7 @@ export function loginScreen({ navigate }) {
     const restore = setBusy(submit, 'Входим…');
 
     try {
-      const user = await api.login({
+      const user = await api.auth.login({
         // ID показываем группами через дефис, серверу отправляем без них.
         publicId: publicId.input.value.replace(/[\s-]/g, '').toUpperCase(),
         password: password.input.value,
@@ -55,10 +55,8 @@ export function loginScreen({ navigate }) {
       session.set(user);
       navigate('/dialogs', { replace: true });
     } catch (err) {
-      error.textContent =
-        err instanceof ApiError && err.status === 401
-          ? 'Неверный ID или пароль'
-          : 'Не удалось войти. Попробуйте ещё раз';
+      // Одна и та же ошибка для неверного ID и неверного пароля (TC-02-N1).
+      error.textContent = errorMessage(err, { 400: 'Неверный ID или пароль', 401: 'Неверный ID или пароль' });
       restore();
     }
   }

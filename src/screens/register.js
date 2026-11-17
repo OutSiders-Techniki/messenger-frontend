@@ -1,7 +1,7 @@
 // Регистрация: только пароль, ID выдаёт сервер.
 // TODO(MSG-42): правила пароля (ждём политику от бэкенда), тайм-аут.
 
-import { api } from '../api/index.js';
+import { api, errorMessage } from '../api/index.js';
 import { putFlash } from '../state/flash.js';
 import { button, field, setBusy } from '../ui/components.js';
 import { h, link } from '../ui/dom.js';
@@ -59,11 +59,11 @@ export function registerScreen({ navigate }) {
     const restore = setBusy(submit, 'Создаём аккаунт…');
 
     try {
-      const { publicId } = await api.register({ password: value, passwordConfirm: passwordConfirm.input.value });
+      const { publicId } = await api.auth.register({ password: value });
       putFlash('registeredId', publicId);
       navigate('/register/done', { replace: true });
-    } catch {
-      error.textContent = 'Не удалось зарегистрироваться. Попробуйте позже';
+    } catch (err) {
+      error.textContent = errorMessage(err);
       restore();
     }
   }
