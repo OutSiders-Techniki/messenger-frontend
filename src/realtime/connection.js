@@ -10,12 +10,20 @@
 // MessageReceived / MessagesDeleted / DialogUpdated и оставить опрос
 // запасным вариантом.
 
-import { api, ApiError } from '../api/index.js';
+import { api, ApiError, NetworkError } from '../api/index.js';
 import { dialogsStore } from '../state/dialogs.js';
 import { messagesStore } from '../state/messages.js';
 import { session } from '../state/session.js';
 
 const POLL_MS = 4000;
+
+// Потеря связи — это обрыв сети или сбой сервера (5xx, в том числе 502 от
+// dev-прокси, когда бэкенд выключен). Ответ 4xx значит, что сервер на
+// связи и просто отказал в этом запросе: например, 404, пока на бэкенде нет
+// эндпоинта сообщений. Такие ошибки показывает сам экран, а не баннер связи.
+function isConnectionProblem(err) {
+  return err instanceof NetworkError || (err instanceof ApiError && err.status >= 500);
+}
 const BACKOFF_MS = [1000, 2000, 5000, 10000, 30000];
 
 let state = 'idle'; // idle | connecting | online | reconnecting | offline
@@ -70,6 +78,12 @@ async function tick() {
   } catch (err) {
     // 401 обрабатывает общий обработчик сессии — дальше не пытаемся.
     if (err instanceof ApiError && err.status === 401) return;
+    if (!isConnectionProblem(err)) {
+      attempt = 0;
+      setState('online');
+      schedule(POLL_MS);
+      return;
+    }
     setState(state === 'connecting' || state === 'online' ? 'reconnecting' : state);
     schedule(BACKOFF_MS[Math.min(attempt, BACKOFF_MS.length - 1)]);
     attempt += 1;
