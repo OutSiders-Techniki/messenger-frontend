@@ -86,6 +86,19 @@ export const httpApi = {
       const dto = await request('POST', `/dialogs/${encodeURIComponent(dialogId)}/messages`, { body: envelope });
       return { id: dto?.id ?? envelope.id, receivedAt: dto?.receivedAt ?? null };
     },
+
+    // Физическое удаление своей копии: выбранных сообщений или всей переписки
+    // (messageIds не передан). Копия собеседника остаётся (FR-11).
+    async deleteSelf(dialogId, messageIds) {
+      await request('POST', `/dialogs/${encodeURIComponent(dialogId)}/messages/delete-self`, {
+        body: messageIds ? { messageIds } : {},
+      });
+    },
+
+    // Удаление обеих копий (FR-12). Подключённый собеседник получит событие.
+    async deleteBoth(dialogId, messageIds) {
+      await request('POST', `/dialogs/${encodeURIComponent(dialogId)}/messages/delete-both`, { body: { messageIds } });
+    },
   },
 };
 

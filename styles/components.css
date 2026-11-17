@@ -623,3 +623,55 @@ a.list-item:hover {
 [data-theme="glass"] .field__input {
   background: var(--bg-field);
 }
+
+/* ---------- Окно выбора действия ---------- */
+
+.choice-actions {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.choice-action {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-5) var(--space-7);
+  color: var(--text);
+  text-align: left;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-press) var(--ease-out),
+    transform var(--dur-press) var(--ease-spring);
+}
+
+.choice-action:hover {
+  border-color: var(--line-strong);
+}
+
+.choice-action:active {
+  transform: scale(0.98);
+}
+
+.choice-action__label {
+  font: var(--type-body-strong);
+}
+
+.choice-action__text {
+  color: var(--text-muted);
+  font: var(--type-small);
+}
+
+.choice-action--danger .choice-action__label {
+  color: var(--color-danger);
+}
+
+.choice-action--danger:hover {
+  border-color: color-mix(in srgb, var(--color-danger) 50%, var(--line));
+}
+
+.modal__actions .btn--block {
+  width: 100%;
+}

@@ -185,6 +185,28 @@ export function formatPublicId(publicId = '') {
   return publicId.match(/.{1,4}/g)?.join('-') ?? '';
 }
 
+// ---------- Модальные окна ----------
+
+// Закрывает окно и отдаёт результат ровно один раз. Результат возвращается
+// сразу при выборе, а не по событию close: в некоторых окружениях оно не
+// приходит. Esc (событие cancel) и любое другое закрытие — отмена.
+function settle(dialog, resolve, cancelValue) {
+  let done = false;
+  function close(value) {
+    if (done) return;
+    done = true;
+    resolve(value);
+    if (dialog.open) dialog.close();
+    dialog.remove();
+  }
+  dialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    close(cancelValue);
+  });
+  dialog.addEventListener('close', () => close(cancelValue));
+  return close;
+}
+
 // ---------- Модальное окно подтверждения ----------
 
 // Возвращает Promise<boolean>: true — подтвердил, false — отменил или закрыл.
@@ -217,17 +239,7 @@ export function confirmDialog({
       h('div', { class: 'modal__actions' }, cancel, confirm),
     );
 
-    let result = false;
-    function close(value) {
-      result = value;
-      dialog.close();
-    }
-
-    // Esc и закрытие формы приходят сюда же.
-    dialog.addEventListener('close', () => {
-      dialog.remove();
-      resolve(result);
-    });
+    const close = settle(dialog, resolve, false);
     // Клик по затемнению вокруг окна — отмена.
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) close(false);
@@ -237,5 +249,53 @@ export function confirmDialog({
     dialog.showModal();
     // Для разрушительных действий фокус на «Отмена», чтобы Enter не удалил случайно.
     (tone === 'danger' ? cancel : confirm).focus();
+  });
+}
+
+// ---------- Окно с выбором из нескольких действий ----------
+
+// choices: [{ value, label, description, tone: 'danger' | 'secondary' }]
+// Возвращает Promise с value выбранного действия или null (отмена, Esc).
+// Каждое действие подписано последствием — разрушительные действия
+// различимы до нажатия (ТЗ, раздел 8).
+export function choiceDialog({ title, text, choices, cancelLabel = 'Отмена' }) {
+  return new Promise((resolve) => {
+    const titleId = uid('modal-title');
+    const cancel = button({ variant: 'secondary', block: true, onClick: () => close(null) }, cancelLabel);
+    const options = choices.map((choice) =>
+      h(
+        'button',
+        {
+          type: 'button',
+          class: `choice-action${choice.tone === 'danger' ? ' choice-action--danger' : ''}`,
+          onClick: () => close(choice.value),
+        },
+        h('span', { class: 'choice-action__label' }, choice.label),
+        choice.description ? h('span', { class: 'choice-action__text' }, choice.description) : null,
+      ),
+    );
+
+    const dialog = h(
+      'dialog',
+      { class: 'modal', 'aria-labelledby': titleId },
+      h(
+        'div',
+        { class: 'modal__body' },
+        h('h2', { id: titleId }, title),
+        text ? h('p', { class: 'modal__text' }, text) : null,
+        h('div', { class: 'choice-actions' }, options),
+      ),
+      h('div', { class: 'modal__actions' }, cancel),
+    );
+
+    const close = settle(dialog, resolve, null);
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) close(null);
+    });
+
+    document.body.append(dialog);
+    dialog.showModal();
+    // Фокус на «Отмена»: Enter не должен ничего удалить случайно.
+    cancel.focus();
   });
 }
