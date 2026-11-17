@@ -802,3 +802,86 @@ a.sidebar__search:hover {
     margin-top: 0;
   }
 }
+
+/* ---------- Список диалогов: ссылки, скелетон, ошибка ---------- */
+
+a.dialog-item {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.dialog-list__error {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  margin: var(--space-4);
+  padding: var(--space-4);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  text-align: center;
+  background: var(--color-danger-soft);
+  border-radius: var(--radius-md);
+}
+
+.skeleton {
+  display: block;
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-surface-3) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-full);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton--circle {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
+.skeleton--line {
+  width: 70%;
+  height: 12px;
+}
+
+.skeleton--short {
+  width: 45%;
+  margin-top: 6px;
+}
+
+.dialog-item--skeleton {
+  cursor: default;
+}
+
+.dialog-item--skeleton:hover {
+  background: transparent;
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+.pane__lead {
+  display: inline-flex;
+  flex: none;
+}
+
+.pane__lead:empty {
+  display: none;
+}
+
+.pane__sub {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.skeleton--sm {
+  width: 36px;
+  height: 36px;
+}
