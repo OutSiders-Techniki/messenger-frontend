@@ -4,7 +4,7 @@
 // append(string)), никогда как HTML: строка «<img onerror=…>» будет
 // показана буквально. Проверка — npm run check:dom.
 
-import { errorMessage } from '../api/index.js';
+import { ApiError, errorMessage } from '../api/index.js';
 import { dialogsStore } from '../state/dialogs.js';
 import { keysStore } from '../state/keys.js';
 import { messagesStore } from '../state/messages.js';
@@ -112,6 +112,26 @@ export function chatScreen({ params, navigate, onDispose }) {
 
     if (state.status === 'loading' || state.status === 'idle') {
       feed.replaceChildren(h('div', { class: 'feed-notice' }, loading('Загружаем и расшифровываем…')));
+      return;
+    }
+
+    // Диалог есть, а адрес истории сервер не знает (404/405) — значит, на
+    // бэкенде ещё нет API сообщений. TODO(backend MSG-019/020): убрать,
+    // когда эндпоинты появятся.
+    const noMessagesApi =
+      state.status === 'error' &&
+      state.error instanceof ApiError &&
+      (state.error.status === 404 || state.error.status === 405) &&
+      dialogsStore.find(dialogId);
+    if (noMessagesApi) {
+      composerSlot.replaceChildren();
+      feed.replaceChildren(
+        h(
+          'p',
+          { class: 'feed-notice' },
+          'Сервер пока не принимает сообщения: на бэкенде ещё нет этой функции. Переписка заработает, когда она появится.',
+        ),
+      );
       return;
     }
 
