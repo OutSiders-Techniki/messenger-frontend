@@ -1,0 +1,170 @@
+/*
+ * Дизайн-токены. Компоненты используют только эти переменные,
+ * поэтому тема и масштаб меняются в одном месте.
+ */
+
+:root {
+  /* Цвет: светлая тема */
+  --color-bg: #eceef4;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3f4f8;
+  --color-surface-3: #e7e9f0;
+  --color-border: #e1e4eb;
+  --color-border-strong: #c7ccd8;
+
+  --color-text: #12141a;
+  --color-text-muted: #687083;
+  --color-text-inverse: #ffffff;
+
+  /* Акцент: текст и ссылки */
+  --color-accent: #4b48d6;
+  --color-accent-hover: #3d3ac2;
+  /* Акцент: заливки кнопок и своих сообщений */
+  --color-accent-fill: #5754e6;
+  --color-accent-fill-hover: #4946d4;
+  --color-accent-soft: #ebeafd;
+  --color-accent-text: #ffffff;
+  --gradient-accent: linear-gradient(135deg, #615ef0 0%, #7f56ea 100%);
+
+  --color-danger: #c4312a;
+  --color-danger-hover: #a8271f;
+  --color-danger-soft: #fdeceb;
+
+  --color-warning: #8a5300;
+  --color-warning-soft: #fdf2df;
+
+  --color-success: #1f7a45;
+  --color-success-soft: #e3f4ea;
+
+  --color-focus: #5754e6;
+  --color-overlay: rgb(12 14 20 / 0.5);
+
+  /* Чат */
+  --chat-bg: #e4e7f0;
+  --chat-pattern: rgb(87 84 230 / 0.07);
+  --bubble-in: #ffffff;
+  --bubble-in-text: var(--color-text);
+  --bubble-out-text: #ffffff;
+  --bubble-meta-in: #8a91a3;
+  --bubble-meta-out: rgb(255 255 255 / 0.75);
+
+  /* Стекло: полупрозрачные панели поверх контента */
+  --glass: rgb(255 255 255 / 0.78);
+
+  /* Типографика */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+  --text-xs: 0.75rem;   /* 12 */
+  --text-sm: 0.875rem;  /* 14 */
+  --text-md: 0.9375rem; /* 15 — основной текст мессенджера */
+  --text-lg: 1.125rem;  /* 18 */
+  --text-xl: 1.375rem;  /* 22 */
+  --text-2xl: 1.75rem;  /* 28 */
+  --text-3xl: 2.25rem;  /* 36 */
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.45;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Отступы: шаг 4px */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Скругления */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  /* Тени */
+  --shadow-sm: 0 1px 2px rgb(16 18 27 / 0.06);
+  --shadow-md: 0 6px 20px rgb(16 18 27 / 0.08);
+  --shadow-lg: 0 20px 50px rgb(16 18 27 / 0.18);
+  --shadow-bubble: 0 1px 1.5px rgb(16 18 27 / 0.12);
+
+  /* Размеры */
+  --control-height: 44px;     /* минимальная зона нажатия на телефоне */
+  --control-height-sm: 36px;
+  --content-width: 720px;
+  --form-width: 400px;
+  --sidebar-width: 360px;
+  --header-height: 60px;
+
+  /* Движение */
+  --duration-fast: 120ms;
+  --duration-normal: 220ms;
+  --easing: cubic-bezier(0.2, 0, 0, 1);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0a0c11;
+    --color-surface: #12151c;
+    --color-surface-2: #1a1e27;
+    --color-surface-3: #232835;
+    --color-border: #232834;
+    --color-border-strong: #353b4a;
+
+    --color-text: #eceef4;
+    --color-text-muted: #8b93a5;
+    --color-text-inverse: #0a0c11;
+
+    --color-accent: #9e9cff;
+    --color-accent-hover: #b6b4ff;
+    --color-accent-fill: #5d5af0;
+    --color-accent-fill-hover: #6d6af5;
+    --color-accent-soft: #23234a;
+    --color-accent-text: #ffffff;
+    --gradient-accent: linear-gradient(135deg, #5d5af0 0%, #7a4fe6 100%);
+
+    --color-danger: #f26b62;
+    --color-danger-hover: #f58a83;
+    --color-danger-soft: #3a1715;
+
+    --color-warning: #e7ac46;
+    --color-warning-soft: #33260e;
+
+    --color-success: #4cc982;
+    --color-success-soft: #112a1d;
+
+    --color-focus: #9e9cff;
+    --color-overlay: rgb(0 0 0 / 0.6);
+
+    --chat-bg: #0e1118;
+    --chat-pattern: rgb(158 156 255 / 0.06);
+    --bubble-in: #1e2330;
+    --bubble-meta-in: #7f879a;
+
+    --glass: rgb(18 21 28 / 0.78);
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 6px 20px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 20px 50px rgb(0 0 0 / 0.6);
+    --shadow-bubble: 0 1px 1.5px rgb(0 0 0 / 0.35);
+
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+  }
+}

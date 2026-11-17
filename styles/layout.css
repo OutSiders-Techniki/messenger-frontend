@@ -1,0 +1,230 @@
+/* Каркас страниц */
+
+.page {
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-10);
+}
+
+.page--centered {
+  display: flex;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.back-link {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+/* Вертикальный ритм: равные отступы между детьми */
+.stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.stack--sm {
+  gap: var(--space-2);
+}
+
+.stack--lg {
+  gap: var(--space-6);
+}
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* ---------- Знак бренда ---------- */
+
+.brand-mark {
+  display: inline-grid;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: #ffffff;
+  background: var(--gradient-accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgb(87 84 230 / 0.35);
+}
+
+/* ---------- Гостевые экраны: вход и регистрация ---------- */
+
+.auth {
+  display: grid;
+  grid-template-columns: minmax(380px, 5fr) 6fr;
+  min-height: 100dvh;
+  background: var(--color-surface);
+}
+
+.auth__brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-8);
+  overflow: hidden;
+  padding: var(--space-10) var(--space-10) var(--space-8);
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 15% 10%, rgb(255 255 255 / 0.18), transparent 40%),
+    radial-gradient(circle at 90% 85%, rgb(255 140 200 / 0.28), transparent 45%),
+    linear-gradient(150deg, #4e4be0 0%, #6a43d6 55%, #8a3fc4 100%);
+}
+
+/* Узор из точек поверх градиента */
+.auth__brand::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background-image: radial-gradient(rgb(255 255 255 / 0.12) 1.2px, transparent 1.3px);
+  background-size: 22px 22px;
+  pointer-events: none;
+}
+
+.auth__brand > * {
+  position: relative;
+  z-index: 1;
+}
+
+.auth__logo,
+.auth__mobile-logo {
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+
+.auth__brand .brand-mark {
+  background: rgb(255 255 255 / 0.18);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+
+.auth__pitch {
+  display: grid;
+  gap: var(--space-8);
+  max-width: 440px;
+}
+
+.auth__headline {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.auth__promises {
+  display: grid;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth__promise {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.auth__promise-icon {
+  display: inline-grid;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  background: rgb(255 255 255 / 0.14);
+  border-radius: var(--radius-md);
+}
+
+.auth__promise-text {
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-sm);
+}
+
+.auth__promise-text span {
+  color: rgb(255 255 255 / 0.78);
+}
+
+.auth__foot {
+  color: rgb(255 255 255 / 0.7);
+  font-size: var(--text-sm);
+}
+
+.auth__main {
+  display: grid;
+  place-items: center;
+  padding: var(--space-10) var(--space-6);
+}
+
+.auth__form {
+  width: 100%;
+  max-width: 380px;
+}
+
+.auth__form h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  letter-spacing: -0.01em;
+}
+
+.auth__mobile-logo {
+  display: none;
+  margin-bottom: var(--space-4);
+  color: var(--color-text);
+}
+
+@media (max-width: 899px) {
+  .auth {
+    grid-template-columns: minmax(0, 1fr);
+    background: var(--color-bg);
+  }
+
+  .auth__brand {
+    display: none;
+  }
+
+  .auth__main {
+    align-items: start;
+    padding: max(var(--space-10), env(safe-area-inset-top)) var(--space-4) var(--space-8);
+  }
+
+  .auth__form {
+    padding: var(--space-8) var(--space-5);
+    background: var(--color-surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+  }
+
+  .auth__mobile-logo {
+    display: inline-flex;
+  }
+}

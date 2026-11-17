@@ -2,8 +2,9 @@ import { api, ApiError } from './api/index.js';
 import { refresh, startRouter } from './router.js';
 import { routes } from './routes.js';
 import { session } from './state/session.js';
+import { button } from './ui/components.js';
 import { h } from './ui/dom.js';
-import { loadingView } from './ui/layout.js';
+import { guestLayout, loadingView } from './ui/layout.js';
 
 const outlet = document.getElementById('app');
 
@@ -27,16 +28,10 @@ async function bootstrap() {
 
 function showRetry() {
   outlet.replaceChildren(
-    h(
-      'main',
-      { class: 'page page--centered' },
-      h(
-        'div',
-        { class: 'card' },
-        h('h1', null, 'Нет связи с сервером'),
-        h('p', { class: 'muted' }, 'Не удалось проверить сессию.'),
-        h('button', { type: 'button', class: 'btn btn--primary', onClick: bootstrap }, 'Повторить'),
-      ),
+    guestLayout(
+      h('h1', null, 'Нет связи с сервером'),
+      h('p', { class: 'muted' }, 'Не удалось проверить сессию.'),
+      button({ block: true, onClick: bootstrap }, 'Повторить'),
     ),
   );
 }
