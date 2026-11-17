@@ -1,4 +1,5 @@
 import { api, ApiError, apiMode, errorMessage, initApi, onUnauthorized } from './api/index.js';
+import './realtime/connection.js';
 import { refresh, startRouter } from './router.js';
 import { routes } from './routes.js';
 import { applyAppearance } from './state/preferences.js';

@@ -1166,3 +1166,65 @@
 .feed-notice .status {
   justify-content: center;
 }
+
+/* ---------- Состояние соединения (MSG-48) ---------- */
+
+.conn-banner {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-7);
+  color: var(--text-muted);
+  font: var(--type-small);
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.conn-banner[hidden] {
+  display: none;
+}
+
+[data-theme="glass"] .conn-banner {
+  margin: var(--space-3) auto 0;
+  padding: var(--space-1) var(--space-6);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-bubble);
+  -webkit-backdrop-filter: blur(var(--blur-bubble)) saturate(160%);
+  backdrop-filter: blur(var(--blur-bubble)) saturate(160%);
+}
+
+.conn-banner__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-amber);
+  border-radius: 50%;
+}
+
+.conn-banner[data-state="offline"] .conn-banner__dot {
+  background: var(--color-danger);
+}
+
+.conn-banner[data-state="restored"] .conn-banner__dot {
+  background: var(--accent);
+}
+
+.conn-banner[data-state="reconnecting"] .conn-banner__dot,
+.conn-banner[data-state="connecting"] .conn-banner__dot {
+  animation: g-typing-dot var(--dur-typing) var(--ease-in-out) infinite;
+}
+
+.conn-banner__retry {
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
