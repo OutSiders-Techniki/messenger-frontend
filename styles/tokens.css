@@ -6,7 +6,7 @@
  * Плотность — data-density="compact" | "normal" | "loose".
  * Цвет акцента — переопределение --accent (см. state/preferences.js).
  *
- * Шрифты подключаются локально (styles/fonts.css): внешние запросы к Google
+ * Шрифты лежат в проекте (fonts/, styles/fonts.css): внешние запросы к Google
  * Fonts запрещены CSP и раскрывали бы IP пользователя третьей стороне.
  */
 
