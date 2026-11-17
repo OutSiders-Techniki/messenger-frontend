@@ -1000,3 +1000,123 @@
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+
+/* ---------- Ключ диалога (MSG-46) ---------- */
+
+.key-intro {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  padding: var(--space-5) 0 var(--space-3);
+  text-align: center;
+}
+
+.key-intro .muted {
+  max-width: 40ch;
+}
+
+.key-prompt__icon--ok {
+  color: var(--accent);
+}
+
+.key-choice {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-5);
+}
+
+.key-choice__option {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-7);
+  color: var(--text);
+  text-align: left;
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-press) var(--ease-out),
+    transform var(--dur-press) var(--ease-spring);
+}
+
+.key-choice__option .icon {
+  margin-bottom: var(--space-2);
+  color: var(--accent);
+}
+
+.key-choice__option:hover {
+  border-color: var(--line-strong);
+  background: var(--bg-raised);
+}
+
+.key-choice__option:active {
+  transform: scale(0.98);
+}
+
+.key-choice__title {
+  font: var(--type-body-strong);
+}
+
+.key-choice__text {
+  color: var(--text-muted);
+  font: var(--type-small);
+}
+
+[data-theme="glass"] .key-choice__option {
+  border-radius: var(--radius-glass-panel);
+  box-shadow: var(--shadow-panel);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(170%);
+  backdrop-filter: blur(var(--blur-panel)) saturate(170%);
+}
+
+/* Ключ сеткой: 14 групп по 4, контрольная группа отмечена акцентом */
+.key-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-7);
+  background: var(--bg-field);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+}
+
+.key-grid__cell {
+  padding: var(--space-3) 0;
+  font: var(--type-id-lg);
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  background: var(--bg-raised);
+  border-radius: var(--radius-sm);
+  user-select: none;
+}
+
+.key-grid__cell--check {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.key-input {
+  font-size: 17px;
+  line-height: 1.7;
+  letter-spacing: 0.1em;
+  resize: none;
+}
+
+.key-progress {
+  color: var(--text-muted);
+  font: var(--type-meta);
+}
+
+.key-progress--ok {
+  color: var(--accent);
+}
+
+@media (max-width: 420px) {
+  .key-grid__cell {
+    font-size: 15px;
+    letter-spacing: 0.06em;
+  }
+}

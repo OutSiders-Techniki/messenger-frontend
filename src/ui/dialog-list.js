@@ -4,6 +4,7 @@
 import { errorMessage } from '../api/index.js';
 import { formatListTime } from '../lib/format.js';
 import { dialogsStore } from '../state/dialogs.js';
+import { keysStore } from '../state/keys.js';
 import { avatar, button, emptyState, formatPublicId } from './components.js';
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -64,6 +65,8 @@ export function dialogList({ activeId = null } = {}) {
   // Панель пересоздаётся при каждом переходе; подписка старой панели
   // снимается, когда та исчезает со страницы.
   dialogsStore.subscribe(render, { owner: root });
+  // Ввели или удалили ключ — подпись «Ключ не введён» меняется.
+  const stopKeys = keysStore.subscribe(() => (root.isConnected ? render() : stopKeys()));
 
   render();
   queueMicrotask(() => dialogsStore.load());
@@ -97,7 +100,9 @@ function item(dialog, active) {
           'span',
           { class: 'dialog-item__row' },
           // TODO(MSG-47): последнее сообщение после расшифровки.
-          h('span', { class: 'dialog-item__preview' }, 'Сообщений пока нет'),
+          keysStore.has(dialog.id)
+            ? h('span', { class: 'dialog-item__preview' }, 'Сообщений пока нет')
+            : h('span', { class: 'dialog-item__preview dialog-item__preview--warn' }, icon('key', { size: 13 }), 'Ключ не введён'),
         ),
       ),
     ),
