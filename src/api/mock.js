@@ -215,7 +215,9 @@ export const mockApi = {
       if (!state.dialogs.some((d) => d.id === dialogId && d.members.includes(me))) {
         throw problem(404, 'Диалог не найден', 'Диалог не найден.');
       }
-      return { items: state.messages[dialogId] ?? [], nextBeforeId: null };
+      // У каждого участника своя копия: удалённое «у себя» другому видно.
+      const items = (state.messages[dialogId] ?? []).filter((m) => !m.owners || m.owners.includes(me));
+      return { items: items.map(({ owners, ...item }) => item), nextBeforeId: null };
     },
 
     async send(dialogId, envelope) {
@@ -227,10 +229,41 @@ export const mockApi = {
       const list = (state.messages[dialogId] ??= []);
       // Идемпотентность: повтор того же id не создаёт второе сообщение.
       if (!list.some((m) => m.envelope.id === envelope.id)) {
-        list.push({ senderId: me, envelope, receivedAt: new Date().toISOString() });
+        const dialog = state.dialogs.find((d) => d.id === dialogId);
+        list.push({ senderId: me, envelope, receivedAt: new Date().toISOString(), owners: [...dialog.members] });
         save();
       }
       return { id: envelope.id, receivedAt: new Date().toISOString() };
+    },
+
+    async deleteSelf(dialogId, messageIds) {
+      await respond();
+      const me = currentUser();
+      const dialog = state.dialogs.find((d) => d.id === dialogId && d.members.includes(me));
+      if (!dialog) throw problem(404, 'Диалог не найден', 'Диалог не найден.');
+      const ids = messageIds ? new Set(messageIds) : null;
+      state.messages[dialogId] = (state.messages[dialogId] ?? [])
+        .map((m) => {
+          if (ids && !ids.has(m.envelope.id)) return m;
+          const owners = (m.owners ?? dialog.members).filter((owner) => owner !== me);
+          return { ...m, owners };
+        })
+        .filter((m) => !m.owners || m.owners.length > 0);
+      save();
+    },
+
+    async deleteBoth(dialogId, messageIds) {
+      await respond();
+      const me = currentUser();
+      if (!state.dialogs.some((d) => d.id === dialogId && d.members.includes(me))) {
+        throw problem(404, 'Диалог не найден', 'Диалог не найден.');
+      }
+      if (!Array.isArray(messageIds) || messageIds.length === 0) {
+        throw problem(400, 'Ошибка валидации', 'Укажите сообщения для удаления.');
+      }
+      const ids = new Set(messageIds);
+      state.messages[dialogId] = (state.messages[dialogId] ?? []).filter((m) => !ids.has(m.envelope.id));
+      save();
     },
   },
 };

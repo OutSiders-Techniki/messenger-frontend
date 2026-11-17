@@ -32,7 +32,7 @@ export function ticks(status) {
 // message: { dir: 'in' | 'out', text?, file?: { name }, time, status?, broken? }
 // status у исходящих: 'sending' | 'delivered' | 'read' | 'failed'.
 // onRetry — повтор отправки для 'failed'.
-export function bubble(message, { isNew = false, onRetry } = {}) {
+export function bubble(message, { isNew = false, onRetry, onDelete } = {}) {
   const classes = ['bubble', `bubble--${message.dir}`];
   if (isNew) classes.push('bubble--new');
   if (message.status === 'sending') classes.push('bubble--sending');
@@ -51,7 +51,19 @@ export function bubble(message, { isNew = false, onRetry } = {}) {
     } else if (message.status) status = ticks(message.status);
   }
 
-  const meta = h('span', { class: 'bubble__meta' }, h('time', null, message.time), status);
+  const meta = h(
+    'span',
+    { class: 'bubble__meta' },
+    h('time', null, message.time),
+    status,
+    onDelete
+      ? h(
+          'button',
+          { type: 'button', class: 'bubble__delete', 'aria-label': 'Удалить сообщение', title: 'Удалить', onClick: onDelete },
+          icon('trash', { size: 13 }),
+        )
+      : null,
+  );
 
   if (message.broken) {
     classes.push('bubble--broken');

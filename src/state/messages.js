@@ -18,7 +18,9 @@ function emit(dialogId) {
 }
 
 function entry(dialogId) {
-  if (!dialogs.has(dialogId)) dialogs.set(dialogId, { status: 'idle', items: [], error: null, pending: null });
+  // revision растёт при каждом локальном изменении ленты (отправка, удаление):
+  // ответ сервера, запрошенный до изменения, уже устарел и не применяется.
+  if (!dialogs.has(dialogId)) dialogs.set(dialogId, { status: 'idle', items: [], error: null, pending: null, revision: 0 });
   return dialogs.get(dialogId);
 }
 
@@ -57,10 +59,11 @@ export const messagesStore = {
     }
 
     let failure = null;
+    const revision = current.revision;
     current.pending = (async () => {
       try {
         const { items } = await api.messages.list(dialogId);
-        if (generation !== session.generation) return;
+        if (generation !== session.generation || revision !== current.revision) return;
         const known = new Map(current.items.map((m) => [m.id, m]));
         const wasReady = current.status === 'ready';
         // Уже расшифрованные не расшифровываем повторно при каждом опросе.
@@ -70,7 +73,7 @@ export const messagesStore = {
             return old && !old.status && !old.locked ? old : decryptItem(dialogId, item);
           }),
         );
-        if (generation !== session.generation) return;
+        if (generation !== session.generation || revision !== current.revision) return;
         // Отсев повторов по id (TC-23): одно сообщение — один элемент ленты.
         // Неотправленные свои остаются, пока сервер их не подтвердит.
         const byId = new Map(current.items.filter((m) => m.status === 'sending' || m.status === 'failed').map((m) => [m.id, m]));
@@ -121,6 +124,7 @@ export const messagesStore = {
 
     const envelope = await encryptMessage(key, { dialogId, senderId, text });
     const current = entry(dialogId);
+    current.revision += 1;
     current.items = sortItems([
       ...current.items,
       { id: envelope.id, senderId, sentAt: envelope.sentAt, envelope, text, broken: false, status: 'sending', isNew: true },
@@ -145,6 +149,35 @@ export const messagesStore = {
       message.status = 'failed';
     }
     emit(dialogId);
+  },
+
+  // Удаление (MSG-51): scope 'self' — своя копия, 'both' — у обоих.
+  // ids не передан — вся переписка. Из ленты убираем сразу; если сервер
+  // отказал — возвращаем как было и пробрасываем ошибку.
+  async remove(dialogId, scope, ids = null) {
+    const current = entry(dialogId);
+    current.revision += 1;
+    const before = current.items;
+    const targets = ids ? new Set(ids) : null;
+    // Неотправленные свои удаляем только локально — на сервере их нет.
+    const onServer = before.filter((m) => (!targets || targets.has(m.id)) && m.status !== 'sending' && m.status !== 'failed');
+    current.items = before.filter((m) => targets && !targets.has(m.id));
+    emit(dialogId);
+
+    try {
+      if (scope === 'both') {
+        if (onServer.length) await api.messages.deleteBoth(dialogId, onServer.map((m) => m.id));
+      } else {
+        await api.messages.deleteSelf(dialogId, ids ?? undefined);
+      }
+    } catch (err) {
+      current.revision += 1;
+      current.items = before;
+      emit(dialogId);
+      throw err;
+    }
+    // Изменение подтверждено сервером — следующий опрос снова актуален.
+    current.revision += 1;
   },
 
   // Связь вернулась — отправляем то, что не ушло (тот же пакет, тот же id).

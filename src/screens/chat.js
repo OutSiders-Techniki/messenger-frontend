@@ -10,7 +10,7 @@ import { keysStore } from '../state/keys.js';
 import { messagesStore } from '../state/messages.js';
 import { connection } from '../realtime/connection.js';
 import { session } from '../state/session.js';
-import { avatar, button, formatPublicId, loading } from '../ui/components.js';
+import { avatar, button, choiceDialog, formatPublicId, loading } from '../ui/components.js';
 import { bubble, composer, dateDivider, lockButton } from '../ui/chat.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -39,7 +39,7 @@ export function chatScreen({ params, navigate, onDispose }) {
 
   const lead = h('span', { class: 'pane__lead' });
   const title = h('h1', null, 'Диалог');
-  const lockSlot = h('span', null);
+  const lockSlot = h('span', { class: 'pane__actions' });
 
   function renderHeader() {
     const dialog = dialogsStore.find(dialogId);
@@ -52,7 +52,16 @@ export function chatScreen({ params, navigate, onDispose }) {
     } else {
       lead.replaceChildren(h('span', { class: 'skeleton skeleton--circle skeleton--sm' }));
     }
-    lockSlot.replaceChildren(lockButton({ href: `#${keyPath}`, verified: keysStore.has(dialogId) }));
+    lockSlot.replaceChildren(
+      keysStore.has(dialogId)
+        ? h(
+            'button',
+            { type: 'button', class: 'btn btn--ghost btn--icon', 'aria-label': 'Удалить переписку', title: 'Удалить переписку', onClick: deleteAll },
+            icon('trash', { size: 18 }),
+          )
+        : null,
+      lockButton({ href: `#${keyPath}`, verified: keysStore.has(dialogId) }),
+    );
   }
 
   // ---------- Состояние соединения ----------
@@ -149,13 +158,66 @@ export function chatScreen({ params, navigate, onDispose }) {
             time: time.format(new Date(item.sentAt)),
             status: STATUS[item.status] ?? null,
           },
-          { isNew: item.isNew, onRetry: () => messagesStore.deliver(dialogId, item.id) },
+          {
+            isNew: item.isNew,
+            onRetry: () => messagesStore.deliver(dialogId, item.id),
+            onDelete: () => deleteOne(item),
+          },
         ),
       );
       item.isNew = false;
     }
-    feed.replaceChildren(...nodes);
+    feed.replaceChildren(deleteError, ...nodes);
     if (stickToBottom) queueMicrotask(() => (body.scrollTop = body.scrollHeight));
+  }
+
+  // ---------- Удаление (MSG-51) ----------
+
+  const deleteError = h('p', { class: 'feed-error', role: 'alert', hidden: true });
+
+  async function runDelete(scope, ids) {
+    deleteError.hidden = true;
+    try {
+      await messagesStore.remove(dialogId, scope, ids);
+    } catch (err) {
+      // Сообщения вернулись в ленту — говорим, что удаление не прошло.
+      deleteError.textContent = `Не удалось удалить. ${errorMessage(err)}`;
+      deleteError.hidden = false;
+    }
+  }
+
+  async function deleteOne(item) {
+    const own = item.senderId === me;
+    const scope = await choiceDialog({
+      title: 'Удалить сообщение?',
+      choices: [
+        { value: 'self', label: 'Удалить у себя', description: 'Исчезнет только у вас. У собеседника сообщение останется.' },
+        {
+          value: 'both',
+          label: 'Удалить у обоих',
+          description: own
+            ? 'Исчезнет у вас и у собеседника. Отменить нельзя.'
+            : 'Исчезнет и у вас, и у собеседника. Отменить нельзя.',
+          tone: 'danger',
+        },
+      ],
+    });
+    if (scope) await runDelete(scope, [item.id]);
+  }
+
+  async function deleteAll() {
+    const items = messagesStore.get(dialogId).items;
+    if (items.length === 0) return;
+    const scope = await choiceDialog({
+      title: 'Удалить переписку?',
+      text: `Сообщений: ${items.length}. Удаление физическое — восстановить переписку будет нельзя.`,
+      choices: [
+        { value: 'self', label: 'Удалить у себя', description: 'Ваша копия исчезнет с сервера. У собеседника переписка останется.' },
+        { value: 'both', label: 'Удалить у обоих', description: 'Переписка исчезнет с сервера у вас и у собеседника.', tone: 'danger' },
+      ],
+    });
+    if (scope === 'self') await runDelete('self', null);
+    else if (scope === 'both') await runDelete('both', items.map((m) => m.id));
   }
 
   function noKeyCard() {
