@@ -215,3 +215,14 @@
     display: block;
   }
 }
+
+/*
+ * Glass: шапка-пилюля без аватара (Аккаунт, Новый диалог). Заголовок
+ * отступает от скруглённого торца так же, как аватар в шапке чата —
+ * иначе текст прижимается к краю пилюли.
+ */
+@media (min-width: 900px) {
+  [data-theme="glass"] .pane__head:not(:has(.pane__lead:not(:empty))) .pane__title {
+    padding-left: var(--space-5);
+  }
+}
