@@ -45,6 +45,9 @@ function save() {
 
 async function respond() {
   await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+  // Перечитываем хранилище: так в dev можно имитировать действия
+  // собеседника, дописав сообщение в sessionStorage.
+  Object.assign(state, load());
 
   let fail = null;
   try {

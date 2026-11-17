@@ -44,37 +44,65 @@ export const messagesStore = {
     return entry(dialogId);
   },
 
-  async load(dialogId) {
+  // silent — фоновая сверка: без индикатора загрузки.
+  // throwOnError — пробросить ошибку сети (для менеджера соединения).
+  async load(dialogId, { silent = false, throwOnError = false } = {}) {
     const current = entry(dialogId);
     if (current.pending) return current.pending;
     const generation = session.generation;
-    if (current.status !== 'ready') {
+    if (current.status !== 'ready' && !silent) {
       current.status = 'loading';
       current.error = null;
       emit(dialogId);
     }
 
+    let failure = null;
     current.pending = (async () => {
       try {
         const { items } = await api.messages.list(dialogId);
-        const decrypted = await Promise.all(items.map((item) => decryptItem(dialogId, item)));
+        if (generation !== session.generation) return;
+        const known = new Map(current.items.map((m) => [m.id, m]));
+        const wasReady = current.status === 'ready';
+        // Уже расшифрованные не расшифровываем повторно при каждом опросе.
+        const decrypted = await Promise.all(
+          items.map((item) => {
+            const old = known.get(item.envelope.id);
+            return old && !old.status && !old.locked ? old : decryptItem(dialogId, item);
+          }),
+        );
         if (generation !== session.generation) return;
         // Отсев повторов по id (TC-23): одно сообщение — один элемент ленты.
+        // Неотправленные свои остаются, пока сервер их не подтвердит.
         const byId = new Map(current.items.filter((m) => m.status === 'sending' || m.status === 'failed').map((m) => [m.id, m]));
-        for (const item of decrypted) byId.set(item.id, item);
-        current.items = sortItems([...byId.values()]);
+        for (const item of decrypted) {
+          const pendingOwn = byId.get(item.id);
+          byId.set(item.id, pendingOwn ? { ...pendingOwn, status: 'sent' } : item);
+          if (wasReady && !known.has(item.id)) item.isNew = true;
+        }
+        // Чего нет на сервере, того нет и в ленте: удалённое исчезает (MSG-52).
+        const next = sortItems([...byId.values()]);
+        const changed =
+          !wasReady ||
+          next.length !== current.items.length ||
+          next.some((m, i) => m !== current.items[i] || m.status !== current.items[i]?.status);
+        current.items = next;
         current.status = 'ready';
         current.error = null;
+        if (changed) emit(dialogId);
       } catch (err) {
+        failure = err;
         if (generation !== session.generation) return;
-        current.status = current.status === 'ready' ? 'ready' : 'error';
-        current.error = err;
+        if (current.status !== 'ready') {
+          current.status = 'error';
+          current.error = err;
+          emit(dialogId);
+        }
       } finally {
         current.pending = null;
-        emit(dialogId);
       }
     })();
-    return current.pending;
+    await current.pending;
+    if (failure && throwOnError) throw failure;
   },
 
   // Новое входящее событие (MSG-48): дубликат по id не добавляется.
@@ -117,6 +145,12 @@ export const messagesStore = {
       message.status = 'failed';
     }
     emit(dialogId);
+  },
+
+  // Связь вернулась — отправляем то, что не ушло (тот же пакет, тот же id).
+  async retryFailed(dialogId) {
+    const failed = entry(dialogId).items.filter((m) => m.status === 'failed');
+    for (const message of failed) await this.deliver(dialogId, message.id);
   },
 
   // Ключ ввели или сменили — расшифровываем загруженное заново.

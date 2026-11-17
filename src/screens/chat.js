@@ -8,6 +8,7 @@ import { errorMessage } from '../api/index.js';
 import { dialogsStore } from '../state/dialogs.js';
 import { keysStore } from '../state/keys.js';
 import { messagesStore } from '../state/messages.js';
+import { connection } from '../realtime/connection.js';
 import { session } from '../state/session.js';
 import { avatar, button, formatPublicId, loading } from '../ui/components.js';
 import { bubble, composer, dateDivider, lockButton } from '../ui/chat.js';
@@ -52,6 +53,38 @@ export function chatScreen({ params, navigate, onDispose }) {
       lead.replaceChildren(h('span', { class: 'skeleton skeleton--circle skeleton--sm' }));
     }
     lockSlot.replaceChildren(lockButton({ href: `#${keyPath}`, verified: keysStore.has(dialogId) }));
+  }
+
+  // ---------- Состояние соединения ----------
+
+  // Показывается, только когда связь не в порядке: «онлайн» — норма, без подписи.
+  const banner = h('div', { class: 'conn-banner', role: 'status', 'aria-live': 'polite' });
+  let hideTimer = null;
+
+  function renderBanner(next = connection.state, previous) {
+    clearTimeout(hideTimer);
+    const texts = {
+      connecting: ['Подключаемся…', false],
+      reconnecting: ['Нет связи с сервером. Переподключаемся…', true],
+      offline: ['Нет подключения к интернету. Сообщения отправятся, когда связь вернётся.', false],
+    };
+    if (texts[next]) {
+      const [text, canRetry] = texts[next];
+      banner.dataset.state = next;
+      banner.replaceChildren(
+        h('span', { class: 'conn-banner__dot', 'aria-hidden': 'true' }),
+        h('span', null, text),
+        canRetry ? h('button', { type: 'button', class: 'conn-banner__retry', onClick: () => connection.retryNow() }, 'Повторить') : null,
+      );
+      banner.hidden = false;
+    } else if (next === 'online' && (previous === 'reconnecting' || previous === 'offline')) {
+      banner.dataset.state = 'restored';
+      banner.replaceChildren(h('span', { class: 'conn-banner__dot', 'aria-hidden': 'true' }), h('span', null, 'Соединение восстановлено'));
+      banner.hidden = false;
+      hideTimer = setTimeout(() => (banner.hidden = true), 2500);
+    } else {
+      banner.hidden = true;
+    }
   }
 
   // ---------- Лента ----------
@@ -166,6 +199,7 @@ export function chatScreen({ params, navigate, onDispose }) {
         h('div', { class: 'pane__title' }, title),
         lockSlot,
       ),
+      banner,
       body,
       composerSlot,
     ),
@@ -179,10 +213,16 @@ export function chatScreen({ params, navigate, onDispose }) {
     renderHeader();
     renderFeed();
   });
+  const stopConnection = connection.subscribe(renderBanner);
+  connection.watch(dialogId);
   onDispose(() => {
     stopMessages();
     stopKeys();
+    stopConnection();
+    connection.unwatch(dialogId);
+    clearTimeout(hideTimer);
   });
+  renderBanner();
 
   renderHeader();
   renderFeed();
