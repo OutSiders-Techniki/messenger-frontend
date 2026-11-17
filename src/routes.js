@@ -3,9 +3,9 @@ import { registerScreen } from './screens/register.js';
 import { registerDoneScreen } from './screens/register-done.js';
 import {
   accountScreen,
-  chatScreen,
   dialogsScreen,
 } from './screens/app-screens.js';
+import { chatScreen } from './screens/chat.js';
 import { dialogKeyScreen } from './screens/dialog-key.js';
 import { notFoundScreen } from './screens/not-found.js';
 import { previewScreen } from './screens/preview.js';

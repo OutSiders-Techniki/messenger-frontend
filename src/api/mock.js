@@ -26,11 +26,11 @@ const MAX_PASSWORD = 128;
 function load() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(STORE_KEY));
-    if (saved?.users) return { dialogs: [], ...saved };
+    if (saved?.users) return { dialogs: [], messages: {}, ...saved };
   } catch {
     // Повреждённые данные заглушки — начинаем с чистого листа.
   }
-  return { users: {}, dialogs: [], sessionUser: null };
+  return { users: {}, dialogs: [], messages: {}, sessionUser: null };
 }
 
 const state = load();
@@ -201,6 +201,33 @@ export const mockApi = {
       const dialog = state.dialogs.find((d) => d.id === dialogId && d.members.includes(me));
       if (!dialog) throw problem(404, 'Диалог не найден', 'Диалог не найден.');
       return toDialog(dialog, me);
+    },
+  },
+
+  // Сообщения хранятся как шифротекст — заглушка, как и сервер, текста не видит.
+  messages: {
+    async list(dialogId) {
+      await respond();
+      const me = currentUser();
+      if (!state.dialogs.some((d) => d.id === dialogId && d.members.includes(me))) {
+        throw problem(404, 'Диалог не найден', 'Диалог не найден.');
+      }
+      return { items: state.messages[dialogId] ?? [], nextBeforeId: null };
+    },
+
+    async send(dialogId, envelope) {
+      await respond();
+      const me = currentUser();
+      if (!state.dialogs.some((d) => d.id === dialogId && d.members.includes(me))) {
+        throw problem(404, 'Диалог не найден', 'Диалог не найден.');
+      }
+      const list = (state.messages[dialogId] ??= []);
+      // Идемпотентность: повтор того же id не создаёт второе сообщение.
+      if (!list.some((m) => m.envelope.id === envelope.id)) {
+        list.push({ senderId: me, envelope, receivedAt: new Date().toISOString() });
+        save();
+      }
+      return { id: envelope.id, receivedAt: new Date().toISOString() };
     },
   },
 };

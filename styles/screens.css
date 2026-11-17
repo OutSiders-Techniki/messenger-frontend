@@ -281,8 +281,9 @@
 
 html[data-api-mode="mock"] body > #app::after {
   position: fixed;
-  bottom: max(var(--space-3), env(safe-area-inset-bottom));
-  left: var(--space-3);
+  top: max(var(--space-1), env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 100;
   padding: 1px var(--space-3);
   color: var(--accent-amber);
