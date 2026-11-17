@@ -8,7 +8,8 @@ import { alert, avatar, button, formatPublicId } from '../ui/components.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { appShell, pane, paneEmpty } from '../ui/layout.js';
-import { lookPicker } from '../ui/look-picker.js';
+import { appearanceSettings } from '../ui/appearance.js';
+import { lockButton } from '../ui/chat.js';
 
 function shell(content, { view = 'pane', activeDialogId = null } = {}) {
   return appShell({ user: session.user, view, activeDialogId, content });
@@ -27,7 +28,8 @@ function dialogHeader(dialogId) {
     if (dialog) {
       lead.replaceChildren(avatar(dialog.peerPublicId, { size: 'sm' }));
       title.textContent = formatPublicId(dialog.peerPublicId);
-      subtitle.replaceChildren(icon('lock', { size: 12 }), 'Сквозное шифрование');
+      // Graphen: в шапке чата никаких подписей — статус передаёт кнопка-замок.
+      subtitle.textContent = '';
     } else if (dialogsStore.status === 'ready') {
       lead.replaceChildren();
       title.textContent = 'Диалог не найден';
@@ -59,14 +61,10 @@ export function chatScreen({ params }) {
       {
         ...header,
         variant: 'chat',
-        actions: h('a', { href: `#${keyPath}`, class: 'btn btn--ghost btn--icon', 'aria-label': 'Ключ диалога' }, icon('key')),
+        // TODO(MSG-46): verified — по наличию ключа диалога на устройстве.
+        actions: lockButton({ href: `#${keyPath}`, verified: false }),
       },
-      h(
-        'p',
-        { class: 'chat__notice' },
-        icon('lock', { size: 13 }),
-        'Сообщения шифруются на ваших устройствах. Сервер их не видит.',
-      ),
+      h('p', { class: 'chat__notice' }, 'Сообщений пока нет'),
     ),
     { activeDialogId: params.dialogId },
   );
@@ -105,7 +103,7 @@ export function accountScreen() {
         h('p', { class: 'profile__id' }, formatPublicId(publicId)),
         h('p', { class: 'muted text-sm' }, 'Ваш ID — по нему вы входите, а собеседники находят вас.'),
       ),
-      h('section', { class: 'card' }, lookPicker()),
+      h('section', { class: 'card' }, h('h2', { class: 'card__title' }, 'Оформление'), appearanceSettings()),
       alert({ tone: 'info' }, 'Здесь будут настройки хранения ключей на этом устройстве.'),
       button({ variant: 'secondary', block: true, onClick: logout }, icon('log-out', { size: 18 }), 'Выйти'),
     ),

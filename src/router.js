@@ -97,7 +97,7 @@ function render() {
 
   const view = route.screen(ctx);
   outlet.replaceChildren(view);
-  document.title = route.title ? `${route.title} · Мессенджер` : 'Мессенджер';
+  document.title = route.title ? `${route.title} · Graphen` : 'Graphen';
 
   // Переносим фокус на заголовок нового экрана — для клавиатуры и скринридеров.
   const heading = outlet.querySelector('h1');

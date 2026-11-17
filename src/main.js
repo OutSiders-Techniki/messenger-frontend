@@ -1,14 +1,14 @@
 import { api, ApiError, apiMode, errorMessage, initApi, onUnauthorized } from './api/index.js';
 import { refresh, startRouter } from './router.js';
 import { routes } from './routes.js';
-import { applyLook } from './state/preferences.js';
+import { applyAppearance } from './state/preferences.js';
 import { session } from './state/session.js';
 import { button } from './ui/components.js';
 import { h } from './ui/dom.js';
 import { guestLayout, loadingView } from './ui/layout.js';
 
 // Оформление применяем до первой отрисовки, чтобы не было мигания.
-applyLook();
+applyAppearance();
 
 const outlet = document.getElementById('app');
 let started = false;

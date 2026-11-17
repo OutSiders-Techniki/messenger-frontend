@@ -12,8 +12,14 @@ const PROMISES = [
   ['trash', 'Удаление без следов', 'Переписку можно стереть у себя или у обоих — физически, а не скрыть.'],
 ];
 
-function brandMark() {
-  return h('span', { class: 'brand-mark', 'aria-hidden': 'true' }, icon('lock', { size: 20 }));
+// Знак Graphen — шестиугольник с двойным контуром в цвете акцента.
+export function brand({ compact = false } = {}) {
+  return h(
+    'span',
+    { class: `brand${compact ? ' brand--compact' : ''}` },
+    h('span', { class: 'brand__mark', 'aria-hidden': 'true' }, icon('logo', { size: 22 })),
+    h('span', { class: 'brand__name' }, 'Graphen'),
+  );
 }
 
 // Компьютер: слева бренд и обещания продукта, справа форма.
@@ -24,8 +30,8 @@ export function guestLayout(...content) {
     { class: 'auth' },
     h(
       'aside',
-      { class: 'auth__brand' },
-      h('div', { class: 'auth__logo' }, brandMark(), 'Мессенджер'),
+      { class: 'auth__brand lattice' },
+      h('div', { class: 'auth__logo' }, brand()),
       h(
         'div',
         { class: 'auth__pitch' },
@@ -48,7 +54,7 @@ export function guestLayout(...content) {
     h(
       'main',
       { class: 'auth__main' },
-      h('div', { class: 'auth__form stack' }, h('div', { class: 'auth__mobile-logo' }, brandMark(), 'Мессенджер'), ...content),
+      h('div', { class: 'auth__form stack' }, h('div', { class: 'auth__mobile-logo' }, brand()), ...content),
     ),
   );
 }
@@ -95,35 +101,37 @@ function sidebar({ user, activeDialogId, onToggle }) {
     h(
       'header',
       { class: 'sidebar__head' },
-      h(
-        'a',
-        {
-          href: '#/account',
-          class: 'sidebar__me',
-          title: 'Аккаунт',
-          'aria-label': `Аккаунт, ваш ID ${formatPublicId(publicId)}`,
-        },
-        avatar(publicId, { size: 'sm' }),
-      ),
-      h('p', { class: 'sidebar__title' }, 'Сообщения'),
+      h('a', { href: '#/dialogs', class: 'sidebar__brand', 'aria-label': 'Graphen, к списку диалогов' }, brand()),
       h(
         'div',
         { class: 'sidebar__actions' },
+        h('button', { type: 'button', class: 'btn btn--ghost btn--icon sidebar__toggle', onClick: onToggle }),
         h(
           'a',
-          { href: '#/search', class: 'btn btn--ghost btn--icon', title: 'Новый диалог', 'aria-label': 'Новый диалог' },
+          { href: '#/search', class: 'btn btn--secondary btn--icon sidebar__new', title: 'Новый диалог', 'aria-label': 'Новый диалог' },
           icon('plus'),
         ),
-        h('button', { type: 'button', class: 'btn btn--ghost btn--icon sidebar__toggle', onClick: onToggle }),
       ),
     ),
     h(
       'a',
-      { href: '#/search', class: 'sidebar__search', title: 'Найти собеседника по ID' },
-      icon('search', { size: 18 }),
-      h('span', { class: 'sidebar__search-text' }, 'Найти собеседника по ID'),
+      { href: '#/search', class: 'sidebar__search', title: 'Найти по ID' },
+      icon('search', { size: 16 }),
+      h('span', { class: 'sidebar__search-text' }, 'Найти по ID'),
     ),
     h('div', { class: 'sidebar__body' }, dialogList({ activeId: activeDialogId })),
+    h(
+      'a',
+      {
+        href: '#/account',
+        class: 'sidebar__me',
+        title: 'Аккаунт и оформление',
+        'aria-label': `Аккаунт и оформление, ваш ID ${formatPublicId(publicId)}`,
+      },
+      avatar(publicId, { size: 'sm' }),
+      h('span', { class: 'sidebar__me-id' }, formatPublicId(publicId)),
+      icon('settings', { size: 18 }),
+    ),
   );
 }
 
@@ -132,7 +140,7 @@ function sidebar({ user, activeDialogId, onToggle }) {
 export function pane({ title, subtitle, back = '/dialogs', lead, actions, variant = 'panel' }, ...body) {
   return h(
     'section',
-    { class: `pane pane--${variant}` },
+    { class: `pane pane--${variant}${variant === 'chat' ? ' lattice' : ''}` },
     h(
       'header',
       { class: 'pane__head' },
@@ -154,9 +162,9 @@ export function pane({ title, subtitle, back = '/dialogs', lead, actions, varian
 export function paneEmpty(text) {
   return h(
     'section',
-    { class: 'pane pane--empty' },
+    { class: 'pane pane--empty lattice' },
     h('h1', { class: 'visually-hidden' }, 'Диалоги'),
-    h('p', { class: 'pane__hint' }, icon('lock', { size: 14 }), text),
+    h('p', { class: 'pane__hint' }, text),
   );
 }
 
