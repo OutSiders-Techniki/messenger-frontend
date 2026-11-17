@@ -72,6 +72,7 @@ async function toApiError(response) {
     title: typeof problem.title === 'string' ? problem.title : '',
     detail: typeof problem.detail === 'string' ? problem.detail : '',
     errors: problem.errors ?? null,
+    code: typeof problem.code === 'string' ? problem.code : null,
     retryAfter: Number.isFinite(retryAfter) ? retryAfter : null,
   });
 }

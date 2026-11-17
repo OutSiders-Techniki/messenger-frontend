@@ -140,8 +140,8 @@ export function composer({ onSend, onAttach }) {
     if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
     event.preventDefault();
     const text = input.value.trim();
-    if (!text) return;
-    onSend(text);
+    // onSend может вернуть false — тогда текст остаётся в поле.
+    if (onSend(text) === false) return;
     input.value = '';
     grow();
   });
