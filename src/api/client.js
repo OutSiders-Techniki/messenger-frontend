@@ -65,4 +65,31 @@ export const httpApi = {
       return toDialog(await request('GET', `/dialogs/${encodeURIComponent(dialogId)}`, { signal }));
     },
   },
+
+  // Сообщения: только шифротекст. TODO(backend MSG-019/020): эндпоинтов
+  // в messenger-backend пока нет — пути по матрице контрактов аналитиков,
+  // формат элемента — по контракту шифрования { senderId, envelope }.
+  // Сверить, когда бэкенд их опубликует.
+  messages: {
+    // История копии текущего пользователя, новые в конце.
+    async list(dialogId, { beforeId, limit = 50, signal } = {}) {
+      const query = new URLSearchParams({ limit: String(limit) });
+      if (beforeId) query.set('beforeId', beforeId);
+      const dto = await request('GET', `/dialogs/${encodeURIComponent(dialogId)}/messages?${query}`, { signal });
+      return {
+        items: (dto?.items ?? []).map(toMessage),
+        nextBeforeId: dto?.nextBeforeId ?? null,
+      };
+    },
+
+    async send(dialogId, envelope) {
+      const dto = await request('POST', `/dialogs/${encodeURIComponent(dialogId)}/messages`, { body: envelope });
+      return { id: dto?.id ?? envelope.id, receivedAt: dto?.receivedAt ?? null };
+    },
+  },
 };
+
+function toMessage(dto) {
+  const envelope = dto.envelope ?? { v: dto.v, id: dto.id, sentAt: dto.sentAt, iv: dto.iv, ct: dto.ct };
+  return { senderId: dto.senderId ?? dto.senderPublicId, envelope, receivedAt: dto.receivedAt ?? null };
+}

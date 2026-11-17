@@ -30,16 +30,28 @@ export function ticks(status) {
 }
 
 // message: { dir: 'in' | 'out', text?, file?: { name }, time, status?, broken? }
-export function bubble(message, { isNew = false } = {}) {
+// status у исходящих: 'sending' | 'delivered' | 'read' | 'failed'.
+// onRetry — повтор отправки для 'failed'.
+export function bubble(message, { isNew = false, onRetry } = {}) {
   const classes = ['bubble', `bubble--${message.dir}`];
   if (isNew) classes.push('bubble--new');
+  if (message.status === 'sending') classes.push('bubble--sending');
+  if (message.status === 'failed') classes.push('bubble--failed');
 
-  const meta = h(
-    'span',
-    { class: 'bubble__meta' },
-    h('time', null, message.time),
-    message.dir === 'out' && message.status ? ticks(message.status) : null,
-  );
+  let status = null;
+  if (message.dir === 'out') {
+    if (message.status === 'sending') status = h('span', { class: 'bubble__sending', role: 'img', 'aria-label': 'Отправляется' }, icon('clock', { size: 12 }));
+    else if (message.status === 'failed') {
+      status = h(
+        'button',
+        { type: 'button', class: 'bubble__retry', onClick: onRetry },
+        icon('alert', { size: 12 }),
+        'Не отправлено · Повторить',
+      );
+    } else if (message.status) status = ticks(message.status);
+  }
+
+  const meta = h('span', { class: 'bubble__meta' }, h('time', null, message.time), status);
 
   if (message.broken) {
     classes.push('bubble--broken');
