@@ -675,3 +675,10 @@ a.list-item:hover {
 .modal__actions .btn--block {
   width: 100%;
 }
+
+/* Узкий телефон: кнопки ряда друг под другом, чтобы подписи не упирались в край */
+@media (max-width: 360px) {
+  .button-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

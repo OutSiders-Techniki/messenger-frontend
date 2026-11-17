@@ -116,7 +116,7 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
       done.disabled = !handed.input.checked;
     });
     done.addEventListener('click', async () => {
-      await keysStore.set(dialogId, pendingBytes, { remember: !remember.input.checked });
+      if (!await keysStore.set(dialogId, pendingBytes, { remember: !remember.input.checked })) return;
       pendingBytes = null;
       navigate(chatPath, { replace: true });
     });
@@ -228,12 +228,17 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
         novalidate: true,
         async onSubmit(event) {
           event.preventDefault();
+          const generation = session.generation;
           const result = await parseKey(input.value);
           if (!result.ok) {
             setError(KEY_ERRORS[result.reason] ?? KEY_ERRORS.checksum);
             return;
           }
-          await keysStore.set(dialogId, result.bytes, { remember: !remember.input.checked });
+          if (generation !== session.generation) {
+            result.bytes.fill(0);
+            return;
+          }
+          if (!await keysStore.set(dialogId, result.bytes, { remember: !remember.input.checked })) return;
           input.value = '';
           navigate(chatPath, { replace: true });
         },
@@ -274,9 +279,9 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
       'div',
       { class: 'stack' },
       intro(
-        'Ключ сохранён на этом устройстве',
+        'Ключ готов к использованию',
         remembered
-          ? 'Сообщения этого диалога шифруются и расшифровываются этим ключом.'
+          ? 'Пока ключ хранится только в памяти вкладки. После перезагрузки его придётся ввести заново.'
           : 'Ключ живёт только до закрытия вкладки — потом его придётся ввести снова.',
         true,
       ),

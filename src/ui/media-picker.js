@@ -6,14 +6,14 @@
 import { h } from './dom.js';
 import { icon } from './icons.js';
 
-export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024; // 26 214 400 байт
+export const MAX_ATTACHMENT_BYTES = 25_000_000;
 
 const sizeFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
 
 export function formatSize(bytes) {
-  if (bytes < 1024) return `${bytes} Б`;
-  if (bytes < 1024 * 1024) return `${sizeFormat.format(bytes / 1024)} КБ`;
-  return `${sizeFormat.format(bytes / (1024 * 1024))} МБ`;
+  if (bytes < 1000) return `${bytes} Б`;
+  if (bytes < 1_000_000) return `${sizeFormat.format(bytes / 1000)} КБ`;
+  return `${sizeFormat.format(bytes / 1_000_000)} МБ`;
 }
 
 // Текст ошибки или null, если файл можно прикрепить.

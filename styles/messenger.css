@@ -1379,3 +1379,58 @@
     padding: 0 var(--space-5);
   }
 }
+
+/* ---------- Телефон: доводка (MSG-50) ---------- */
+
+/* iOS увеличивает страницу при фокусе на поле со шрифтом меньше 16px */
+@media (max-width: 899px) and (pointer: coarse) {
+  .field__input,
+  .composer__input,
+  .sidebar__search {
+    font-size: 16px;
+  }
+}
+
+/* Узкие телефоны: ID собеседника важнее аватара — шапка не обрезает его */
+@media (max-width: 380px) {
+  .pane__head {
+    gap: var(--space-3);
+    padding-right: var(--space-5);
+    padding-left: var(--space-7);
+  }
+
+  .pane--chat .pane__lead {
+    display: none;
+  }
+
+  .pane--chat .pane__title h1 {
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+
+  .pane__actions {
+    gap: 0;
+  }
+
+  .feed {
+    padding-right: var(--space-5);
+    padding-left: var(--space-5);
+  }
+}
+
+/* Горизонтальная ориентация телефона: низкий экран, шапка и поле компактнее */
+@media (max-height: 480px) and (orientation: landscape) {
+  .pane__head {
+    min-height: 44px;
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-1);
+  }
+
+  .composer {
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  }
+
+  .feed {
+    padding-top: var(--space-5);
+  }
+}
