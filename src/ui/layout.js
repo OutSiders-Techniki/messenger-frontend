@@ -1,4 +1,5 @@
 import { avatar, formatPublicId, loading } from './components.js';
+import { preferences } from '../state/preferences.js';
 import { dialogList } from './dialog-list.js';
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -11,8 +12,14 @@ const PROMISES = [
   ['trash', 'Удаление без следов', 'Переписку можно стереть у себя или у обоих — физически, а не скрыть.'],
 ];
 
-function brandMark() {
-  return h('span', { class: 'brand-mark', 'aria-hidden': 'true' }, icon('lock', { size: 20 }));
+// Знак Graphen — шестиугольник с двойным контуром в цвете акцента.
+export function brand({ compact = false } = {}) {
+  return h(
+    'span',
+    { class: `brand${compact ? ' brand--compact' : ''}` },
+    h('span', { class: 'brand__mark', 'aria-hidden': 'true' }, icon('logo', { size: 22 })),
+    h('span', { class: 'brand__name' }, 'Graphen'),
+  );
 }
 
 // Компьютер: слева бренд и обещания продукта, справа форма.
@@ -23,8 +30,8 @@ export function guestLayout(...content) {
     { class: 'auth' },
     h(
       'aside',
-      { class: 'auth__brand' },
-      h('div', { class: 'auth__logo' }, brandMark(), 'Мессенджер'),
+      { class: 'auth__brand lattice' },
+      h('div', { class: 'auth__logo' }, brand()),
       h(
         'div',
         { class: 'auth__pitch' },
@@ -47,7 +54,7 @@ export function guestLayout(...content) {
     h(
       'main',
       { class: 'auth__main' },
-      h('div', { class: 'auth__form stack' }, h('div', { class: 'auth__mobile-logo' }, brandMark(), 'Мессенджер'), ...content),
+      h('div', { class: 'auth__form stack' }, h('div', { class: 'auth__mobile-logo' }, brand()), ...content),
     ),
   );
 }
@@ -57,11 +64,36 @@ export function guestLayout(...content) {
 // view: 'list' — на телефоне виден список диалогов, 'pane' — правая часть.
 // На компьютере обе колонки видны всегда.
 // activeDialogId — какой диалог подсветить в списке.
+// Боковую панель на компьютере можно свернуть в узкую полоску с аватарами.
 export function appShell({ user, view = 'pane', activeDialogId = null, content }) {
-  return h('div', { class: 'messenger', 'data-view': view }, sidebar({ user, activeDialogId }), content);
+  const root = h(
+    'div',
+    { class: 'messenger', 'data-view': view, 'data-sidebar': preferences.sidebarCollapsed ? 'collapsed' : 'expanded' },
+    sidebar({ user, activeDialogId, onToggle: toggle }),
+    content,
+  );
+
+  function toggle() {
+    const collapsed = root.dataset.sidebar !== 'collapsed';
+    preferences.sidebarCollapsed = collapsed;
+    root.dataset.sidebar = collapsed ? 'collapsed' : 'expanded';
+    syncToggle(root.querySelector('.sidebar__toggle'), collapsed);
+  }
+
+  syncToggle(root.querySelector('.sidebar__toggle'), preferences.sidebarCollapsed);
+  return root;
 }
 
-function sidebar({ user, activeDialogId }) {
+function syncToggle(btn, collapsed) {
+  if (!btn) return;
+  const label = collapsed ? 'Развернуть список диалогов' : 'Свернуть список диалогов';
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('title', label);
+  btn.setAttribute('aria-expanded', String(!collapsed));
+  btn.replaceChildren(icon(collapsed ? 'panel-right' : 'panel-left'));
+}
+
+function sidebar({ user, activeDialogId, onToggle }) {
   const publicId = user?.publicId ?? '';
   return h(
     'aside',
@@ -69,25 +101,37 @@ function sidebar({ user, activeDialogId }) {
     h(
       'header',
       { class: 'sidebar__head' },
+      h('a', { href: '#/dialogs', class: 'sidebar__brand', 'aria-label': 'Graphen, к списку диалогов' }, brand()),
       h(
-        'a',
-        {
-          href: '#/account',
-          class: 'sidebar__me',
-          title: 'Аккаунт',
-          'aria-label': `Аккаунт, ваш ID ${formatPublicId(publicId)}`,
-        },
-        avatar(publicId, { size: 'sm' }),
-      ),
-      h('p', { class: 'sidebar__title' }, 'Сообщения'),
-      h(
-        'a',
-        { href: '#/search', class: 'btn btn--ghost btn--icon', title: 'Новый диалог', 'aria-label': 'Новый диалог' },
-        icon('plus'),
+        'div',
+        { class: 'sidebar__actions' },
+        h('button', { type: 'button', class: 'btn btn--ghost btn--icon sidebar__toggle', onClick: onToggle }),
+        h(
+          'a',
+          { href: '#/search', class: 'btn btn--secondary btn--icon sidebar__new', title: 'Новый диалог', 'aria-label': 'Новый диалог' },
+          icon('plus'),
+        ),
       ),
     ),
-    h('a', { href: '#/search', class: 'sidebar__search' }, icon('search', { size: 18 }), h('span', null, 'Найти собеседника по ID')),
+    h(
+      'a',
+      { href: '#/search', class: 'sidebar__search', title: 'Найти по ID' },
+      icon('search', { size: 16 }),
+      h('span', { class: 'sidebar__search-text' }, 'Найти по ID'),
+    ),
     h('div', { class: 'sidebar__body' }, dialogList({ activeId: activeDialogId })),
+    h(
+      'a',
+      {
+        href: '#/account',
+        class: 'sidebar__me',
+        title: 'Аккаунт и оформление',
+        'aria-label': `Аккаунт и оформление, ваш ID ${formatPublicId(publicId)}`,
+      },
+      avatar(publicId, { size: 'sm' }),
+      h('span', { class: 'sidebar__me-id' }, formatPublicId(publicId)),
+      icon('settings', { size: 18 }),
+    ),
   );
 }
 
@@ -96,7 +140,7 @@ function sidebar({ user, activeDialogId }) {
 export function pane({ title, subtitle, back = '/dialogs', lead, actions, variant = 'panel' }, ...body) {
   return h(
     'section',
-    { class: `pane pane--${variant}` },
+    { class: `pane pane--${variant}${variant === 'chat' ? ' lattice' : ''}` },
     h(
       'header',
       { class: 'pane__head' },
@@ -118,9 +162,9 @@ export function pane({ title, subtitle, back = '/dialogs', lead, actions, varian
 export function paneEmpty(text) {
   return h(
     'section',
-    { class: 'pane pane--empty' },
+    { class: 'pane pane--empty lattice' },
     h('h1', { class: 'visually-hidden' }, 'Диалоги'),
-    h('p', { class: 'pane__hint' }, icon('lock', { size: 14 }), text),
+    h('p', { class: 'pane__hint' }, text),
   );
 }
 

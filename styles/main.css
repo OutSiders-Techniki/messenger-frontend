@@ -1,7 +1,9 @@
 /* Порядок важен: токены → база → каркас → компоненты → экраны */
+@import url("fonts.css");
 @import url("tokens.css");
 @import url("base.css");
 @import url("layout.css");
 @import url("components.css");
 @import url("messenger.css");
 @import url("screens.css");
+
