@@ -104,6 +104,11 @@ export function field({
     else input.removeAttribute('aria-invalid');
   }
 
+  // Пользователь начал исправлять — старая ошибка больше не актуальна.
+  input.addEventListener('input', () => {
+    if (root.classList.contains('field--invalid')) setError('');
+  });
+
   return { root, input, setError };
 }
 
