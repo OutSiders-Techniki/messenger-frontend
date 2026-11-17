@@ -2,10 +2,12 @@
 // { title, status, detail, errors?: { Поле: ["текст", …] } }
 
 export class ApiError extends Error {
-  constructor(status, { title = '', detail = '', errors = null, retryAfter = null } = {}) {
+  constructor(status, { title = '', detail = '', errors = null, retryAfter = null, code = null } = {}) {
     super(detail || title || `HTTP ${status}`);
     this.name = 'ApiError';
     this.status = status;
+    // Стабильный машинный код ошибки бэкенда (ApiErrorCodes), если есть.
+    this.code = code;
     this.title = title;
     this.detail = detail;
     // Ошибки по полям: ключи в нижнем регистре, значения — массивы строк.
@@ -66,6 +68,8 @@ export function errorMessage(err, overrides = {}) {
       return err.detail || 'Не найдено';
     case 409:
       return err.detail || 'Конфликт данных. Обновите страницу';
+    case 413:
+      return err.detail || 'Файл слишком большой. Максимум — 25 МБ';
     case 429:
       return err.retryAfter
         ? `Слишком много попыток. Повторите через ${formatSeconds(err.retryAfter)}`

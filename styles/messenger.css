@@ -1279,3 +1279,103 @@
   border: 1px solid color-mix(in srgb, var(--color-danger) 40%, var(--line));
   border-radius: var(--radius-pill);
 }
+
+/* ---------- Вложения (MSG-53) ---------- */
+
+.composer-wrap {
+  flex: none;
+}
+
+.media-picker {
+  width: 100%;
+  max-width: var(--composer-max);
+  margin: 0 auto;
+  padding: 0 var(--space-7);
+}
+
+.media-error {
+  margin-bottom: var(--space-3);
+  color: var(--color-danger);
+  font: var(--type-small);
+}
+
+.media-error:empty {
+  display: none;
+}
+
+.media-chip {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  margin-bottom: var(--space-1);
+  margin-left: calc(var(--control) + var(--space-3));
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-2);
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-row);
+  animation: g-message-in var(--dur-message-in) var(--ease-spring) both;
+  transform-origin: 0 100%;
+}
+
+.media-chip[hidden] {
+  display: none;
+}
+
+[data-theme="glass"] .media-chip {
+  box-shadow: var(--shadow-panel);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(170%);
+  backdrop-filter: blur(var(--blur-panel)) saturate(170%);
+}
+
+.media-chip__thumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  background: var(--bg-avatar);
+  border-radius: var(--radius-sm);
+}
+
+.media-chip__info {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.media-chip__name {
+  overflow: hidden;
+  font: var(--type-body-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-chip__meta {
+  color: var(--text-muted);
+  font: var(--type-meta);
+}
+
+/* Перетаскивание файла в чат */
+.pane--drop::after {
+  position: absolute;
+  inset: 8px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  font: var(--type-body-strong);
+  content: "Отпустите, чтобы прикрепить фото или видео";
+  background: color-mix(in srgb, var(--bg-base) 80%, transparent);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-row);
+  pointer-events: none;
+}
+
+.pane--chat {
+  position: relative;
+}
+
+@media (max-width: 899px) {
+  .media-picker {
+    padding: 0 var(--space-5);
+  }
+}

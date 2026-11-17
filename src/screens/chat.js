@@ -15,6 +15,7 @@ import { bubble, composer, dateDivider, lockButton } from '../ui/chat.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { appShell } from '../ui/layout.js';
+import { mediaPicker } from '../ui/media-picker.js';
 
 const time = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' });
 const dayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
@@ -231,19 +232,34 @@ export function chatScreen({ params, navigate, onDispose }) {
     );
   }
 
-  const chatComposer = composer({
-    async onSend(text) {
-      stickToBottom = true;
-      try {
-        await messagesStore.send(dialogId, text);
-      } catch {
-        // Ключ пропал (выход в другой вкладке) — лента сама покажет запрос ключа.
-      }
-    },
-    onAttach() {
-      // TODO(MSG-53): выбор фото и видео.
-    },
-  });
+  // ---------- Вложения (MSG-53) ----------
+
+  const picker = mediaPicker();
+
+  const chatComposer = h(
+    'div',
+    { class: 'composer-wrap' },
+    picker.root,
+    composer({
+      onSend(text) {
+        if (picker.file) {
+          // TODO(MSG-38): шифрование файла и метаданных по спецификации
+          // медиа, затем загрузка в AttachmentsController бэкенда.
+          picker.showError('Отправка файлов включится, когда будет согласовано шифрование медиа. Уберите файл, чтобы отправить текст.');
+          return false;
+        }
+        if (!text) return false;
+        stickToBottom = true;
+        messagesStore.send(dialogId, text).catch(() => {
+          // Ключ пропал (выход в другой вкладке) — лента сама покажет запрос ключа.
+        });
+        return true;
+      },
+      onAttach() {
+        picker.open();
+      },
+    }),
+  );
 
   // ---------- Подписки ----------
 
@@ -266,6 +282,24 @@ export function chatScreen({ params, navigate, onDispose }) {
       composerSlot,
     ),
   });
+
+  // Файл можно перетащить в окно чата.
+  const chatPane = root.querySelector('.pane--chat');
+  chatPane.addEventListener('dragover', (event) => {
+    if (!keysStore.has(dialogId) || !event.dataTransfer?.types.includes('Files')) return;
+    event.preventDefault();
+    chatPane.classList.add('pane--drop');
+  });
+  chatPane.addEventListener('dragleave', (event) => {
+    if (!chatPane.contains(event.relatedTarget)) chatPane.classList.remove('pane--drop');
+  });
+  chatPane.addEventListener('drop', (event) => {
+    chatPane.classList.remove('pane--drop');
+    if (!keysStore.has(dialogId) || !event.dataTransfer?.files.length) return;
+    event.preventDefault();
+    picker.drop([...event.dataTransfer.files]);
+  });
+  onDispose(() => picker.clear());
 
   dialogsStore.subscribe(renderHeader, { owner: lead });
   const stopMessages = messagesStore.subscribe((id) => {

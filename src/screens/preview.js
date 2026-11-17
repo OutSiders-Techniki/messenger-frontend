@@ -159,6 +159,7 @@ export function previewScreen() {
       body,
       composer({
         onSend(text) {
+          if (!text) return false;
           dialog.typing = false;
           dialog.messages = [...messages, { dir: 'out', text, time: currentTime(), status: 'delivered' }];
           dialog.time = currentTime();
