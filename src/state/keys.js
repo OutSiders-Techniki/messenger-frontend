@@ -30,10 +30,17 @@ export const keysStore = {
 
   // bytes — 32 байта ключа. После импорта массив обнуляется.
   async set(dialogId, bytes, { remember = true } = {}) {
-    const key = await crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-    bytes.fill(0);
-    keys.set(dialogId, { key, remember });
-    emit();
+    const generation = session.generation;
+    try {
+      if (!session.isAuthenticated) return false;
+      const key = await crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+      if (generation !== session.generation) return false;
+      keys.set(dialogId, { key, remember });
+      emit();
+      return true;
+    } finally {
+      bytes.fill(0);
+    }
   },
 
   remove(dialogId) {

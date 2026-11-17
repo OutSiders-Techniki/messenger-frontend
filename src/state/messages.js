@@ -118,11 +118,13 @@ export const messagesStore = {
   },
 
   async send(dialogId, text) {
+    const generation = session.generation;
     const key = keysStore.get(dialogId);
     const senderId = session.user?.publicId;
     if (!key || !senderId) throw new Error('No key or session');
 
     const envelope = await encryptMessage(key, { dialogId, senderId, text });
+    if (generation !== session.generation) return;
     const current = entry(dialogId);
     current.revision += 1;
     current.items = sortItems([
