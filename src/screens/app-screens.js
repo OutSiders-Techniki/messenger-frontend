@@ -3,6 +3,7 @@
 
 import { logout } from '../actions/auth.js';
 import { dialogsStore } from '../state/dialogs.js';
+import { keysStore } from '../state/keys.js';
 import { session } from '../state/session.js';
 import { alert, avatar, button, formatPublicId } from '../ui/components.js';
 import { h } from '../ui/dom.js';
@@ -61,28 +62,9 @@ export function chatScreen({ params }) {
       {
         ...header,
         variant: 'chat',
-        // TODO(MSG-46): verified — по наличию ключа диалога на устройстве.
-        actions: lockButton({ href: `#${keyPath}`, verified: false }),
+        actions: lockButton({ href: `#${keyPath}`, verified: keysStore.has(params.dialogId) }),
       },
       h('p', { class: 'chat__notice' }, 'Сообщений пока нет'),
-    ),
-    { activeDialogId: params.dialogId },
-  );
-}
-
-// TODO(MSG-46): показ сгенерированного ключа и ввод ключа собеседника.
-export function dialogKeyScreen({ params }) {
-  const header = dialogHeader(params.dialogId);
-  return shell(
-    pane(
-      { ...header, subtitle: 'Ключ диалога', back: `/dialogs/${encodeURIComponent(params.dialogId)}` },
-      h(
-        'div',
-        { class: 'key-prompt' },
-        h('span', { class: 'key-prompt__icon' }, icon('key', { size: 28 })),
-        h('h2', null, 'Ключ диалога'),
-        h('p', { class: 'muted' }, 'Здесь будет показ и ввод ключа в формате Base32.'),
-      ),
     ),
     { activeDialogId: params.dialogId },
   );

@@ -7,6 +7,7 @@
 import { api, ApiError, errorMessage } from '../api/index.js';
 import { normalizePublicId, validatePublicId } from '../lib/validation.js';
 import { dialogsStore } from '../state/dialogs.js';
+import { putFlash } from '../state/flash.js';
 import { session } from '../state/session.js';
 import { alert, avatar, button, emptyState, field, formatPublicId, loading, setBusy } from '../ui/components.js';
 import { h } from '../ui/dom.js';
@@ -165,6 +166,7 @@ export function searchScreen({ navigate, onDispose }) {
       // Новый диалог сразу появляется в списке, без перезагрузки.
       dialogsStore.upsert(dialog);
       const path = `/dialogs/${encodeURIComponent(dialog.id)}`;
+      if (!wasKnown) putFlash('createKeyFor', dialog.id);
       navigate(wasKnown ? path : `${path}/key`);
     } catch (err) {
       restore();
