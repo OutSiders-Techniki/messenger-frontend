@@ -66,12 +66,10 @@ export const httpApi = {
     },
   },
 
-  // Сообщения: только шифротекст. TODO(backend MSG-019/020): эндпоинтов
-  // в messenger-backend пока нет — пути по матрице контрактов аналитиков,
-  // формат элемента — по контракту шифрования { senderId, envelope }.
-  // Сверить, когда бэкенд их опубликует.
+  // REST-контракт messenger-backend возвращает плоские пакеты v1.
+  // Внутри клиента пакет отделён от метаданных отправителя.
   messages: {
-    // История копии текущего пользователя, новые в конце.
+    // История копии текущего пользователя. Сервер сортирует от новых к старым.
     async list(dialogId, { beforeId, limit = 50, signal } = {}) {
       const query = new URLSearchParams({ limit: String(limit) });
       if (beforeId) query.set('beforeId', beforeId);
@@ -84,7 +82,12 @@ export const httpApi = {
 
     async send(dialogId, envelope) {
       const dto = await request('POST', `/dialogs/${encodeURIComponent(dialogId)}/messages`, { body: envelope });
-      return { id: dto?.id ?? envelope.id, receivedAt: dto?.receivedAt ?? null };
+      return { id: dto?.message?.id ?? envelope.id, deleted: dto?.deleted === true };
+    },
+
+    async sync(dialogId, ids) {
+      const dto = await request('POST', `/dialogs/${encodeURIComponent(dialogId)}/messages/sync`, { body: { ids } });
+      return dto.missingIds;
     },
 
     // Физическое удаление своей копии: выбранных сообщений или всей переписки

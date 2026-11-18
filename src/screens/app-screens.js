@@ -24,7 +24,6 @@ export function dialogsScreen() {
 }
 
 // Аккаунт: свой ID, ключи на этом устройстве, выход.
-// TODO(MSG-34): режим хранения ключей — на устройстве или «не запоминать».
 // TODO(MSG-39): «Выйти и удалить сохранённые ключи с устройства».
 export function accountScreen() {
   const publicId = session.user?.publicId ?? '';
@@ -39,7 +38,7 @@ export function accountScreen() {
         h('p', { class: 'muted text-sm' }, 'Ваш ID — по нему вы входите, а собеседники находят вас.'),
       ),
       h('section', { class: 'card' }, h('h2', { class: 'card__title' }, 'Оформление'), appearanceSettings()),
-      alert({ tone: 'info' }, 'Здесь будут настройки хранения ключей на этом устройстве.'),
+      alert({ tone: 'info' }, 'Режим хранения выбирается на экране ключа каждого диалога. Сохранённый ключ доступен в этом браузере после повторного входа.'),
       button({ variant: 'secondary', block: true, onClick: logout }, icon('log-out', { size: 18 }), 'Выйти'),
     ),
   );

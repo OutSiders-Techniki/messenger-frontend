@@ -1,51 +1,101 @@
-// Ключи диалогов текущего пользователя.
-// Ключ импортируется как неизвлекаемый CryptoKey AES-GCM: после импорта
-// приложение не может прочитать его байты — только шифровать и расшифровывать.
-//
-// Сейчас ключи живут только в памяти вкладки и пропадают при перезагрузке.
-// TODO(MSG-34): сохранение в IndexedDB, если пользователь не выбрал
-// «Не запоминать на этом устройстве».
-
+import { importDialogKey } from '../crypto.js';
+import { keyDatabase } from './key-db.js';
 import { session } from './session.js';
 
-const keys = new Map(); // dialogId → { key: CryptoKey, remember: boolean }
+let active = null;
 const listeners = new Set();
 
-function emit() {
-  for (const listener of [...listeners]) listener();
+function emit(dialogId) {
+  for (const listener of [...listeners]) listener(dialogId);
+}
+
+async function restore(account) {
+  try {
+    const records = await keyDatabase.read(account.id, account.signal);
+    if (account.signal.aborted) return;
+    for (const { dialogId, key } of records) {
+      account.keys.set(dialogId, { key, remember: true });
+    }
+  } catch {
+    // Доступ к чату остаётся, а невозможность сохранить ключ видна при вводе.
+  } finally {
+    if (!account.signal.aborted) {
+      account.restoring = false;
+      emit(null);
+    }
+  }
+}
+
+function enqueue(account, operation) {
+  const pending = account.pending.then(async () => {
+    if (account.signal.aborted) return false;
+    try {
+      return await operation();
+    } catch (error) {
+      if (account.signal.aborted) return false;
+      throw error;
+    }
+  });
+  account.pending = pending.catch(() => {});
+  return pending;
 }
 
 export const keysStore = {
+  get restoring() {
+    return active?.restoring ?? false;
+  },
+
+  whenReady() {
+    return active?.ready ?? Promise.resolve();
+  },
+
   has(dialogId) {
-    return keys.has(dialogId);
+    return active?.keys.has(dialogId) ?? false;
   },
 
   get(dialogId) {
-    return keys.get(dialogId)?.key ?? null;
+    return active?.keys.get(dialogId)?.key ?? null;
   },
 
   remembered(dialogId) {
-    return keys.get(dialogId)?.remember ?? false;
+    return active?.keys.get(dialogId)?.remember ?? false;
   },
 
-  // bytes — 32 байта ключа. После импорта массив обнуляется.
   async set(dialogId, bytes, { remember = true } = {}) {
-    const generation = session.generation;
+    const account = active;
     try {
-      if (!session.isAuthenticated) return false;
-      const key = await crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-      if (generation !== session.generation) return false;
-      keys.set(dialogId, { key, remember });
-      emit();
-      return true;
+      if (!account) return false;
+      return await enqueue(account, async () => {
+        const key = await importDialogKey(bytes);
+        if (account.signal.aborted) return false;
+        if (remember) {
+          await keyDatabase.write({ accountId: account.id, dialogId, key }, account.signal);
+        } else if (typeof indexedDB !== 'undefined') {
+          // Переход в режим без сохранения также удаляет ранее сохранённый ключ.
+          await keyDatabase.delete(account.id, dialogId, account.signal);
+        }
+        if (account.signal.aborted) return false;
+        account.keys.set(dialogId, { key, remember });
+        emit(dialogId);
+        return true;
+      });
     } finally {
       bytes.fill(0);
     }
   },
 
-  remove(dialogId) {
-    keys.delete(dialogId);
-    emit();
+  async remove(dialogId) {
+    const account = active;
+    if (!account) return false;
+    return enqueue(account, async () => {
+      if (account.keys.get(dialogId)?.remember) {
+        await keyDatabase.delete(account.id, dialogId, account.signal);
+      }
+      if (account.signal.aborted) return false;
+      account.keys.delete(dialogId);
+      emit(dialogId);
+      return true;
+    });
   },
 
   subscribe(listener) {
@@ -54,8 +104,18 @@ export const keysStore = {
   },
 };
 
-// Выход или смена аккаунта — ключи из памяти убираем (UC-03).
-session.subscribe(() => {
-  keys.clear();
-  emit();
+session.subscribe(user => {
+  if (active) {
+    active.controller.abort();
+    active.keys.clear();
+  }
+  active = null;
+  if (user) {
+    const controller = new AbortController();
+    const account = { id: user.publicId, keys: new Map(), controller, signal: controller.signal, restoring: true };
+    active = account;
+    account.ready = restore(account);
+    account.pending = account.ready;
+  }
+  emit(null);
 });

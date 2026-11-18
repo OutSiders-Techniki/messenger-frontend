@@ -5,6 +5,7 @@
 // показана буквально. Проверка — npm run check:dom.
 
 import { errorMessage } from '../api/index.js';
+import { textError } from '../crypto.js';
 import { dialogsStore } from '../state/dialogs.js';
 import { keysStore } from '../state/keys.js';
 import { messagesStore } from '../state/messages.js';
@@ -114,7 +115,9 @@ export function chatScreen({ params, navigate, onDispose }) {
 
     if (!hasKey) {
       composerSlot.replaceChildren();
-      feed.replaceChildren(noKeyCard());
+      feed.replaceChildren(keysStore.restoring
+        ? h('div', { class: 'feed-notice' }, loading('Восстанавливаем ключи…'))
+        : noKeyCard());
       return;
     }
 
@@ -235,11 +238,13 @@ export function chatScreen({ params, navigate, onDispose }) {
   // ---------- Вложения (MSG-53) ----------
 
   const picker = mediaPicker();
+  const sendError = h('p', { class: 'field__error', role: 'alert' });
 
   const chatComposer = h(
     'div',
     { class: 'composer-wrap' },
     picker.root,
+    sendError,
     composer({
       onSend(text) {
         if (picker.file) {
@@ -249,6 +254,9 @@ export function chatScreen({ params, navigate, onDispose }) {
           return false;
         }
         if (!text) return false;
+        const problem = textError(text);
+        sendError.textContent = problem ?? '';
+        if (problem) return false;
         stickToBottom = true;
         messagesStore.send(dialogId, text).catch(() => {
           // Ключ пропал (выход в другой вкладке) — лента сама покажет запрос ключа.

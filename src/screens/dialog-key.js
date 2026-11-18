@@ -32,7 +32,13 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
 
   // Байты нового ключа живут только до сохранения или ухода с экрана.
   let pendingBytes = null;
-  onDispose(() => pendingBytes?.fill(0));
+  let disposed = false;
+  let renderId = 0;
+  onDispose(() => {
+    disposed = true;
+    pendingBytes?.fill(0);
+    pendingBytes = null;
+  });
 
   const content = h('div', { class: 'stack' });
   const peerTitle = h('span', null, 'Ключ диалога');
@@ -49,10 +55,14 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
   renderHeader();
 
   async function render() {
-    if (mode === 'ready') content.replaceChildren(readyView());
-    else if (mode === 'show') content.replaceChildren(await showView());
-    else if (mode === 'enter') content.replaceChildren(enterView());
-    else content.replaceChildren(chooseView());
+    const id = ++renderId;
+    let view;
+    if (mode === 'ready') view = readyView();
+    else if (mode === 'show') view = await showView();
+    else if (mode === 'enter') view = enterView();
+    else view = chooseView();
+    if (disposed || id !== renderId) return;
+    content.replaceChildren(view);
     content.querySelector('[data-autofocus]')?.focus();
   }
 
@@ -112,13 +122,28 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
     });
     const handed = checkbox({ label: 'Собеседник ввёл ключ у себя' });
     const done = button({ block: true, disabled: true }, 'Готово');
+    const error = h('p', { class: 'field__error', role: 'alert' });
+    let saving = false;
     handed.input.addEventListener('change', () => {
-      done.disabled = !handed.input.checked;
+      done.disabled = saving || !handed.input.checked;
     });
     done.addEventListener('click', async () => {
-      if (!await keysStore.set(dialogId, pendingBytes, { remember: !remember.input.checked })) return;
-      pendingBytes = null;
-      navigate(chatPath, { replace: true });
+      if (saving || !pendingBytes) return;
+      saving = true;
+      done.disabled = true;
+      error.textContent = '';
+      const bytes = pendingBytes;
+      try {
+        if (!await keysStore.set(dialogId, bytes.slice(), { remember: !remember.input.checked })) return;
+        bytes.fill(0);
+        if (pendingBytes === bytes) pendingBytes = null;
+        if (!disposed) navigate(chatPath, { replace: true });
+      } catch {
+        error.textContent = 'Не удалось обновить хранилище ключей. Проверьте настройки браузера и повторите.';
+      } finally {
+        saving = false;
+        done.disabled = !handed.input.checked;
+      }
     });
 
     return h(
@@ -130,7 +155,7 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
         { tone: 'warning', title: 'Ключ показывается один раз' },
         'Не пересылайте его через другие мессенджеры и почту. Потерянный ключ не восстанавливается — вместе с ним теряется переписка.',
       ),
-      h('div', { class: 'card stack stack--sm' }, remember.root, handed.root),
+      h('div', { class: 'card stack stack--sm' }, remember.root, handed.root, error),
       done,
       button(
         {
@@ -170,6 +195,7 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
     const submit = button({ type: 'submit', block: true, disabled: true }, 'Сохранить ключ');
 
     let checkToken = 0;
+    let saving = false;
 
     async function update() {
       const normalized = normalizeKeyInput(input.value);
@@ -203,7 +229,10 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
 
       // Опечатка видна сразу, до попытки расшифровки (TC-06-N1).
       const result = await parseKey(normalized);
-      if (token !== checkToken) return;
+      if (disposed || token !== checkToken) {
+        if (result.ok) result.bytes.fill(0);
+        return;
+      }
       if (!result.ok) {
         setError(KEY_ERRORS.checksum);
         return;
@@ -211,7 +240,7 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
       result.bytes.fill(0);
       progress.textContent = 'Контрольная сумма сходится';
       progress.classList.add('key-progress--ok');
-      submit.disabled = false;
+      submit.disabled = saving;
     }
 
     function setError(message) {
@@ -228,19 +257,30 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
         novalidate: true,
         async onSubmit(event) {
           event.preventDefault();
+          if (saving) return;
+          saving = true;
+          submit.disabled = true;
+          const typed = input.value;
           const generation = session.generation;
-          const result = await parseKey(input.value);
-          if (!result.ok) {
-            setError(KEY_ERRORS[result.reason] ?? KEY_ERRORS.checksum);
-            return;
+          try {
+            const result = await parseKey(typed);
+            if (disposed || generation !== session.generation || typed !== input.value) {
+              if (result.ok) result.bytes.fill(0);
+              return;
+            }
+            if (!result.ok) {
+              setError(KEY_ERRORS[result.reason] ?? KEY_ERRORS.checksum);
+              return;
+            }
+            if (!await keysStore.set(dialogId, result.bytes, { remember: !remember.input.checked })) return;
+            input.value = '';
+            if (!disposed) navigate(chatPath, { replace: true });
+          } catch {
+            error.textContent = 'Не удалось обновить хранилище ключей. Проверьте настройки браузера и повторите.';
+          } finally {
+            saving = false;
+            submit.disabled = !progress.classList.contains('key-progress--ok');
           }
-          if (generation !== session.generation) {
-            result.bytes.fill(0);
-            return;
-          }
-          if (!await keysStore.set(dialogId, result.bytes, { remember: !remember.input.checked })) return;
-          input.value = '';
-          navigate(chatPath, { replace: true });
         },
       },
       h('label', { class: 'field__label', for: 'dialog-key-input' }, 'Ключ от собеседника'),
@@ -275,14 +315,15 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
 
   function readyView() {
     const remembered = keysStore.remembered(dialogId);
+    const error = h('p', { class: 'field__error', role: 'alert' });
     return h(
       'div',
       { class: 'stack' },
       intro(
         'Ключ готов к использованию',
         remembered
-          ? 'Пока ключ хранится только в памяти вкладки. После перезагрузки его придётся ввести заново.'
-          : 'Ключ живёт только до закрытия вкладки — потом его придётся ввести снова.',
+          ? 'Ключ сохранён в этом браузере и восстановится после перезагрузки в том же аккаунте.'
+          : 'Ключ хранится в памяти вкладки до выхода или перезагрузки страницы.',
         true,
       ),
       button({ block: true, 'data-autofocus': '', onClick: () => navigate(chatPath) }, 'Открыть переписку'),
@@ -298,17 +339,32 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
               tone: 'danger',
             });
             if (!ok) return;
-            keysStore.remove(dialogId);
+            try {
+              if (!await keysStore.remove(dialogId) || disposed) return;
+            } catch {
+              error.textContent = 'Не удалось удалить сохранённый ключ. Повторите попытку.';
+              return;
+            }
             mode = 'choose';
             render();
           },
         },
         'Удалить ключ с устройства',
       ),
+      error,
     );
   }
 
-  render();
+  if (keysStore.restoring) {
+    content.replaceChildren(h('p', { role: 'status' }, 'Восстанавливаем ключи…'));
+    keysStore.whenReady().then(() => {
+      if (disposed) return;
+      if (keysStore.has(dialogId)) mode = 'ready';
+      render();
+    });
+  } else {
+    render();
+  }
 
   return appShell({
     user: session.user,

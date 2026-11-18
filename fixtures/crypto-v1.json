@@ -1,0 +1,25 @@
+{
+  "warning": "Public test key and IV. Never use for real messages.",
+  "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "ivHex": "000102030405060708090a0b",
+  "keyBase32": "AAAQEAYEAUDAOCAJBIFQYDIOB4IBCEQTCQKRMFYYDENBWHA5DYPQ",
+  "checksum": "MMG4",
+  "displayKey": "AAAQ-EAYE-AUDA-OCAJ-BIFQ-YDIO-B4IB-CEQT-CQKR-MFYY-DENB-WHA5-DYPQ-MMG4",
+  "context": {
+    "v": 1,
+    "dialogId": "dialog-test-1",
+    "senderId": "USERAB23",
+    "id": "00000000-0000-4000-8000-000000000001",
+    "sentAt": 1794463200000
+  },
+  "aadUtf8": "[1,\"dialog-test-1\",\"USERAB23\",\"00000000-0000-4000-8000-000000000001\",1794463200000]",
+  "aadHex": "5b312c226469616c6f672d746573742d31222c225553455241423233222c2230303030303030302d303030302d343030302d383030302d303030303030303030303031222c313739343436333230303030305d",
+  "plaintext": "Привет, команда!",
+  "envelope": {
+    "v": 1,
+    "id": "00000000-0000-4000-8000-000000000001",
+    "sentAt": 1794463200000,
+    "iv": "AAECAwQFBgcICQoL",
+    "ct": "l50HmxVdEqld9EYJncmo11NoV4ggy4_B6NM1NTytz7Y3P4O9Rmy-F7mtRsuY"
+  }
+}
