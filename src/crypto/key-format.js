@@ -1,12 +1,8 @@
-// Формат ключа диалога для показа и ввода (контракт шифрования v1,
-// docs/crypto-contract-v1.md в PR #28):
+// Формат ключа диалога для показа и ввода (docs/crypto-contract-v1.md):
 //   32 случайных байта → Base32 RFC 4648 без «=» (52 символа, последние
 //   4 бита нулевые) + контрольная сумма: первые 20 бит SHA-256 исходных
 //   32 байт, 4 символа Base32. Итого 56 символов, 14 групп по 4.
 //
-// Здесь только кодирование и проверка ввода — то, что нужно экранам.
-// Импорт в CryptoKey и хранение — задачи MSG-33/MSG-34 (крипто-модуль).
-
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const KEY_BYTES = 32;
 const KEY_CHARS = 52;
@@ -59,13 +55,16 @@ export function groups(text) {
 
 // 32 байта ключа → строка для показа: 14 групп через дефис.
 export async function formatKey(bytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.length !== KEY_BYTES) {
+    throw new TypeError('Ключ диалога должен содержать 32 байта');
+  }
   return groups(encodeBits(bytes, 256) + (await checksum(bytes))).join('-');
 }
 
 // Убирает разрешённые разделители и приводит a–z к верхнему регистру.
 // null — во вводе есть недопустимые символы (кириллица, 0, 1, 8, 9 и т. п.).
 export function normalizeKeyInput(input) {
-  const cleaned = String(input).replace(/[\s-]/g, '').replace(/[a-z]/g, (c) => c.toUpperCase());
+  const cleaned = String(input).replace(/[ \t\r\n-]/g, '').replace(/[a-z]/g, (c) => c.toUpperCase());
   return /^[A-Z2-7]*$/.test(cleaned) ? cleaned : null;
 }
 
@@ -77,8 +76,10 @@ export async function parseKey(input) {
   if (text.length !== DISPLAY_CHARS) return { ok: false, reason: 'length' };
 
   const { bytes, tail } = decodeBase32(text.slice(0, KEY_CHARS));
-  if (bytes.length !== KEY_BYTES || tail !== 0) return { ok: false, reason: 'checksum' };
-  if ((await checksum(bytes)) !== text.slice(KEY_CHARS)) return { ok: false, reason: 'checksum' };
+  if (bytes.length !== KEY_BYTES || tail !== 0 || (await checksum(bytes)) !== text.slice(KEY_CHARS)) {
+    bytes.fill(0);
+    return { ok: false, reason: 'checksum' };
+  }
   return { ok: true, bytes };
 }
 

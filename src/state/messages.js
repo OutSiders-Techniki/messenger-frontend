@@ -6,7 +6,7 @@
 //   broken: не удалось расшифровать (неверный ключ или повреждение).
 
 import { api } from '../api/index.js';
-import { decryptMessage, encryptMessage } from '../crypto/envelope.js';
+import { decryptMessage, encryptMessage } from '../crypto.js';
 import { keysStore } from './keys.js';
 import { session } from './session.js';
 
@@ -25,11 +25,14 @@ function entry(dialogId) {
 }
 
 function sortItems(items) {
-  return items.sort((a, b) => a.sentAt - b.sentAt);
+  return items.sort((a, b) => a.sentAt - b.sentAt || a.id.localeCompare(b.id));
 }
 
-async function decryptItem(dialogId, { senderId, envelope }) {
-  const key = keysStore.get(dialogId);
+function samePacket(a, b) {
+  return a.senderId === b.senderId && ['v', 'id', 'sentAt', 'iv', 'ct'].every(field => a.envelope[field] === b.envelope[field]);
+}
+
+async function decryptItem(dialogId, { senderId, envelope }, key) {
   const base = { id: envelope.id, senderId, sentAt: envelope.sentAt, envelope, status: null };
   if (!key) return { ...base, text: null, broken: false, locked: true };
   try {
@@ -39,6 +42,15 @@ async function decryptItem(dialogId, { senderId, envelope }) {
     // Открытый текст не показываем ни частично (TC-06-N2, TC-23-N2).
     return { ...base, text: null, broken: true };
   }
+}
+
+async function findDeleted(dialogId, items) {
+  const deleted = new Set();
+  for (let i = 0; i < items.length; i += 500) {
+    const missing = await api.messages.sync(dialogId, items.slice(i, i + 500).map(item => item.id));
+    for (const id of missing) deleted.add(id);
+  }
+  return deleted;
 }
 
 export const messagesStore = {
@@ -62,27 +74,43 @@ export const messagesStore = {
     const revision = current.revision;
     current.pending = (async () => {
       try {
-        const { items } = await api.messages.list(dialogId);
+        const { items, nextBeforeId } = await api.messages.list(dialogId);
         if (generation !== session.generation || revision !== current.revision) return;
         const known = new Map(current.items.map((m) => [m.id, m]));
         const wasReady = current.status === 'ready';
-        // Уже расшифрованные не расшифровываем повторно при каждом опросе.
-        const decrypted = await Promise.all(
-          items.map((item) => {
-            const old = known.get(item.envelope.id);
-            return old && !old.status && !old.locked ? old : decryptItem(dialogId, item);
-          }),
-        );
-        if (generation !== session.generation || revision !== current.revision) return;
-        // Отсев повторов по id (TC-23): одно сообщение — один элемент ленты.
-        // Неотправленные свои остаются, пока сервер их не подтвердит.
+        const key = keysStore.get(dialogId);
+        const listed = new Set(items.map(item => item.envelope.id));
+        const older = nextBeforeId ? current.items.filter(item => (
+          !listed.has(item.id) && item.status !== 'sending' && item.status !== 'failed'
+        )) : [];
+        const [decrypted, deleted] = await Promise.all([
+          Promise.all(
+            items.map((item) => {
+              const old = known.get(item.envelope.id);
+              return old && !old.status && old.text !== null && samePacket(old, item)
+                ? old : decryptItem(dialogId, item, key);
+            }),
+          ),
+          findDeleted(dialogId, older),
+        ]);
+        if (generation !== session.generation || revision !== current.revision || key !== keysStore.get(dialogId)) return;
+        // Сетевой повтор не создаёт второй элемент. Если первый пакет
+        // повреждён, корректный пакет с тем же ID может его заменить.
         const byId = new Map(current.items.filter((m) => m.status === 'sending' || m.status === 'failed').map((m) => [m.id, m]));
-        for (const item of decrypted) {
-          const pendingOwn = byId.get(item.id);
-          byId.set(item.id, pendingOwn ? { ...pendingOwn, status: 'sent' } : item);
-          if (wasReady && !known.has(item.id)) item.isNew = true;
+        for (const item of older) {
+          if (!deleted.has(item.id)) byId.set(item.id, item);
         }
-        // Чего нет на сервере, того нет и в ленте: удалённое исчезает (MSG-52).
+        for (const item of decrypted) {
+          const previous = byId.get(item.id);
+          if (previous?.status === 'sending' || previous?.status === 'failed') {
+            if (samePacket(previous, item) && !item.broken) {
+              byId.set(item.id, { ...item, status: 'sent' });
+            }
+            continue;
+          }
+          if (previous?.text != null) continue;
+          byId.set(item.id, wasReady && !known.has(item.id) ? { ...item, isNew: true } : item);
+        }
         const next = sortItems([...byId.values()]);
         const changed =
           !wasReady ||
@@ -108,12 +136,25 @@ export const messagesStore = {
     if (failure && throwOnError) throw failure;
   },
 
-  // Новое входящее событие (MSG-48): дубликат по id не добавляется.
+  // Входящий пакет может повториться или прийти параллельно с историей.
   async receive(dialogId, item) {
+    if (!session.isAuthenticated) return;
+    const generation = session.generation;
+    const key = keysStore.get(dialogId);
     const current = entry(dialogId);
-    if (current.items.some((m) => m.id === item.envelope.id && m.status !== 'failed')) return;
-    const decrypted = await decryptItem(dialogId, item);
-    current.items = sortItems([...current.items.filter((m) => m.id !== decrypted.id), { ...decrypted, isNew: true }]);
+    const revision = current.revision;
+    const existing = current.items.find(m => m.id === item.envelope.id);
+    if (existing?.text != null && !existing.status) return;
+    const decrypted = await decryptItem(dialogId, item, key);
+    if (generation !== session.generation || revision !== current.revision || key !== keysStore.get(dialogId)) return;
+    const previous = current.items.find(m => m.id === decrypted.id);
+    if (previous?.status) {
+      if (!samePacket(previous, decrypted) || decrypted.broken) return;
+      decrypted.status = 'sent';
+    } else if (previous?.text != null || (previous && decrypted.text === null)) {
+      return;
+    }
+    current.items = sortItems([...current.items.filter(m => m.id !== decrypted.id), { ...decrypted, isNew: !previous }]);
     emit(dialogId);
   },
 
@@ -124,7 +165,7 @@ export const messagesStore = {
     if (!key || !senderId) throw new Error('No key or session');
 
     const envelope = await encryptMessage(key, { dialogId, senderId, text });
-    if (generation !== session.generation) return;
+    if (generation !== session.generation || key !== keysStore.get(dialogId)) return;
     const current = entry(dialogId);
     current.revision += 1;
     current.items = sortItems([
@@ -138,6 +179,7 @@ export const messagesStore = {
   // Отправка (и повтор) того же пакета: при повторе не шифруем заново,
   // чтобы не создать новый IV под тем же id (контракт v1, «повтор»).
   async deliver(dialogId, messageId) {
+    const generation = session.generation;
     const current = entry(dialogId);
     const message = current.items.find((m) => m.id === messageId);
     if (!message) return;
@@ -145,10 +187,19 @@ export const messagesStore = {
     message.isNew = false;
     emit(dialogId);
     try {
-      await api.messages.send(dialogId, message.envelope);
-      message.status = 'sent';
+      const result = await api.messages.send(dialogId, message.envelope);
+      if (generation !== session.generation) return;
+      if (result?.deleted) {
+        current.revision += 1;
+        current.items = current.items.filter(item => item.id !== messageId);
+      } else {
+        const delivered = current.items.find(item => item.id === messageId);
+        if (delivered) delivered.status = 'sent';
+      }
     } catch {
-      message.status = 'failed';
+      if (generation !== session.generation) return;
+      const failed = current.items.find(item => item.id === messageId);
+      if (failed?.status === 'sending') failed.status = 'failed';
     }
     emit(dialogId);
   },
@@ -191,11 +242,19 @@ export const messagesStore = {
   // Ключ ввели или сменили — расшифровываем загруженное заново.
   async redecrypt(dialogId) {
     const current = entry(dialogId);
-    current.items = sortItems(
-      await Promise.all(
-        current.items.map((m) => (m.status ? m : decryptItem(dialogId, { senderId: m.senderId, envelope: m.envelope }))),
-      ),
-    );
+    const generation = session.generation;
+    const key = keysStore.get(dialogId);
+    const snapshot = current.items.map(item => ({ ...item, text: null, locked: true, broken: false }));
+    current.items = snapshot;
+    emit(dialogId);
+    if (!key || snapshot.length === 0) return;
+    const decrypted = await Promise.all(snapshot.map(item => decryptItem(dialogId, item, key)));
+    if (generation !== session.generation || key !== keysStore.get(dialogId)) return;
+    const replacements = new Map(snapshot.map((item, index) => [item, decrypted[index]]));
+    current.items = current.items.map(item => {
+      const next = replacements.get(item);
+      return next ? { ...item, text: next.text, locked: next.locked, broken: next.broken } : item;
+    });
     emit(dialogId);
   },
 
@@ -210,6 +269,8 @@ session.subscribe(() => {
   emit(null);
 });
 
-keysStore.subscribe(() => {
-  for (const dialogId of dialogs.keys()) messagesStore.redecrypt(dialogId);
+keysStore.subscribe(changedDialogId => {
+  for (const dialogId of dialogs.keys()) {
+    if (changedDialogId === null || changedDialogId === dialogId) messagesStore.redecrypt(dialogId);
+  }
 });
