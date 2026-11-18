@@ -32,7 +32,7 @@ export function ticks(status) {
 // message: { dir: 'in' | 'out', text?, file?: { name }, time, status?, broken? }
 // status у исходящих: 'sending' | 'delivered' | 'read' | 'failed'.
 // onRetry — повтор отправки для 'failed'.
-export function bubble(message, { isNew = false, onRetry, onDelete } = {}) {
+export function bubble(message, { isNew = false, onRetry, onDelete, media } = {}) {
   const classes = ['bubble', `bubble--${message.dir}`];
   if (isNew) classes.push('bubble--new');
   if (message.status === 'sending') classes.push('bubble--sending');
@@ -74,6 +74,8 @@ export function bubble(message, { isNew = false, onRetry, onDelete } = {}) {
       meta,
     );
   }
+
+  if (media) return h('div', { class: classes.join(' ') }, media, meta);
 
   if (message.file) {
     return h(
@@ -136,14 +138,17 @@ export function composer({ onSend, onAttach }) {
   }
 
   input.addEventListener('input', grow);
-  input.addEventListener('keydown', (event) => {
+  input.addEventListener('keydown', async (event) => {
     if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
     event.preventDefault();
     const text = input.value.trim();
-    // onSend может вернуть false — тогда текст остаётся в поле.
-    if (onSend(text) === false) return;
-    input.value = '';
-    grow();
+    const original = input.value;
+    const result = onSend(text);
+    if (result === false || (result instanceof Promise && await result === false)) return;
+    if (input.value === original) {
+      input.value = '';
+      grow();
+    }
   });
 
   return h(

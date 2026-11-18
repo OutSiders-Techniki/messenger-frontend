@@ -6,7 +6,8 @@
 //   broken: не удалось расшифровать (неверный ключ или повреждение).
 
 import { api } from '../api/index.js';
-import { decryptMessage, encryptMessage } from '../crypto.js';
+import { decryptMessage, encryptMediaMessage, encryptMessage } from '../crypto.js';
+import { encryptMedia } from '../crypto/media.js';
 import { keysStore } from './keys.js';
 import { session } from './session.js';
 
@@ -51,6 +52,17 @@ async function findDeleted(dialogId, items) {
     for (const id of missing) deleted.add(id);
   }
   return deleted;
+}
+
+async function uploadMedia(dialogId, { id, upload }) {
+  try {
+    await api.attachments.upload(dialogId, id, id, upload);
+  } catch (error) {
+    if (error.status !== 409) throw error;
+    // Ответ на успешную загрузку мог потеряться. Принимаем только тот же пакет.
+    const existing = await api.attachments.metadata(dialogId, id, id);
+    if (existing.encryptedMetadata !== upload.metadata || existing.size !== upload.body.size) throw error;
+  }
 }
 
 export const messagesStore = {
@@ -103,7 +115,7 @@ export const messagesStore = {
         for (const item of decrypted) {
           const previous = byId.get(item.id);
           if (previous?.status === 'sending' || previous?.status === 'failed') {
-            if (samePacket(previous, item) && !item.broken) {
+            if (!previous.upload && samePacket(previous, item) && !item.broken) {
               byId.set(item.id, { ...item, status: 'sent' });
             }
             continue;
@@ -149,7 +161,7 @@ export const messagesStore = {
     if (generation !== session.generation || revision !== current.revision || key !== keysStore.get(dialogId)) return;
     const previous = current.items.find(m => m.id === decrypted.id);
     if (previous?.status) {
-      if (!samePacket(previous, decrypted) || decrypted.broken) return;
+      if (previous.upload || !samePacket(previous, decrypted) || decrypted.broken) return;
       decrypted.status = 'sent';
     } else if (previous?.text != null || (previous && decrypted.text === null)) {
       return;
@@ -158,19 +170,25 @@ export const messagesStore = {
     emit(dialogId);
   },
 
-  async send(dialogId, text) {
+  async send(dialogId, text, file = null) {
     const generation = session.generation;
     const key = keysStore.get(dialogId);
     const senderId = session.user?.publicId;
     if (!key || !senderId) throw new Error('No key or session');
 
-    const envelope = await encryptMessage(key, { dialogId, senderId, text });
+    const envelope = file
+      ? await encryptMediaMessage(key, { dialogId, senderId })
+      : await encryptMessage(key, { dialogId, senderId, text });
+    const upload = file ? await encryptMedia(key, { dialogId, senderId, envelope }, file, text) : null;
     if (generation !== session.generation || key !== keysStore.get(dialogId)) return;
     const current = entry(dialogId);
     current.revision += 1;
     current.items = sortItems([
       ...current.items,
-      { id: envelope.id, senderId, sentAt: envelope.sentAt, envelope, text, broken: false, status: 'sending', isNew: true },
+      {
+        id: envelope.id, senderId, sentAt: envelope.sentAt, envelope, text: file ? '' : text,
+        upload, broken: false, status: 'sending', isNew: true,
+      },
     ]);
     emit(dialogId);
     await this.deliver(dialogId, envelope.id);
@@ -194,7 +212,18 @@ export const messagesStore = {
         current.items = current.items.filter(item => item.id !== messageId);
       } else {
         const delivered = current.items.find(item => item.id === messageId);
-        if (delivered) delivered.status = 'sent';
+        if (!delivered) return;
+        if (delivered.upload) {
+          delivered.serverAccepted = true;
+          await uploadMedia(dialogId, delivered);
+          if (generation !== session.generation) return;
+          const latest = current.items.find(item => item.id === messageId);
+          if (!latest) return;
+          latest.upload = null;
+          latest.status = 'sent';
+        } else {
+          delivered.status = 'sent';
+        }
       }
     } catch {
       if (generation !== session.generation) return;
@@ -213,7 +242,7 @@ export const messagesStore = {
     const before = current.items;
     const targets = ids ? new Set(ids) : null;
     // Неотправленные свои удаляем только локально — на сервере их нет.
-    const onServer = before.filter((m) => (!targets || targets.has(m.id)) && m.status !== 'sending' && m.status !== 'failed');
+    const onServer = before.filter((m) => (!targets || targets.has(m.id)) && (m.serverAccepted || (m.status !== 'sending' && m.status !== 'failed')));
     current.items = before.filter((m) => targets && !targets.has(m.id));
     emit(dialogId);
 

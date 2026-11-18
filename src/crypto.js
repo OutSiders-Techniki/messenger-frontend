@@ -68,6 +68,16 @@ export async function encryptMessage(key, { dialogId, senderId, text }) {
     throw new TypeError('Некорректный размер сообщения');
   }
 
+  return encryptPayload(key, { dialogId, senderId, text });
+}
+
+// Пустой аутентифицированный текст зарезервирован для сообщения с вложением.
+export function encryptMediaMessage(key, { dialogId, senderId }) {
+  requireDialogKey(key);
+  return encryptPayload(key, { dialogId, senderId, text: '' });
+}
+
+async function encryptPayload(key, { dialogId, senderId, text }) {
   const id = crypto.randomUUID();
   const sentAt = Date.now();
   const additionalData = buildAAD({ v: VERSION, dialogId, senderId, id, sentAt });
@@ -86,7 +96,7 @@ export async function decryptMessage(key, { dialogId, senderId, envelope }) {
   const { v, id, sentAt, iv, ct } = envelope;
   const additionalData = buildAAD({ v, dialogId, senderId, id, sentAt });
   const nonce = decodeBase64url(iv, IV_BYTES, IV_BYTES);
-  const ciphertext = decodeBase64url(ct, TAG_BYTES + 1, MAX_CIPHERTEXT_BYTES);
+  const ciphertext = decodeBase64url(ct, TAG_BYTES, MAX_CIPHERTEXT_BYTES);
   const plain = new Uint8Array(await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: nonce, additionalData, tagLength: 128 }, key, ciphertext,
   ));
