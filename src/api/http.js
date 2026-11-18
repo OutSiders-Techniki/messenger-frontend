@@ -20,9 +20,11 @@ export function reportUnauthorized(error) {
 
 // options.allowUnauthorized — 401 ожидаем (вход, проверка сессии) и не
 // считаем признаком истёкшей сессии.
-export async function request(method, path, { body, signal, allowUnauthorized = false } = {}) {
+export async function request(method, path, {
+  body, signal, allowUnauthorized = false, binary = false, headers = {}, timeout = TIMEOUT_MS,
+} = {}) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort('timeout'), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort('timeout'), timeout);
   signal?.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
 
   let response;
@@ -32,13 +34,15 @@ export async function request(method, path, { body, signal, allowUnauthorized = 
       // Только тот же origin: CORS на бэкенде не настроен и не нужен.
       credentials: 'same-origin',
       headers: {
-        Accept: 'application/json',
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...headers,
+        Accept: binary ? 'application/octet-stream' : 'application/json',
+        ...(body !== undefined ? { 'Content-Type': body instanceof Blob ? 'application/octet-stream' : 'application/json' } : {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body instanceof Blob || body === undefined ? body : JSON.stringify(body),
       signal: controller.signal,
       cache: 'no-store',
     });
+    if (binary && response.ok) return await response.arrayBuffer();
   } catch (err) {
     if (signal?.aborted) throw err;
     throw new NetworkError(err, { timeout: controller.signal.reason === 'timeout' });

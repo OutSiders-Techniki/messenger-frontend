@@ -4,7 +4,7 @@
 // append(string)), никогда как HTML: строка «<img onerror=…>» будет
 // показана буквально. Проверка — npm run check:dom.
 
-import { errorMessage } from '../api/index.js';
+import { apiMode, errorMessage } from '../api/index.js';
 import { textError } from '../crypto.js';
 import { dialogsStore } from '../state/dialogs.js';
 import { keysStore } from '../state/keys.js';
@@ -16,6 +16,7 @@ import { bubble, composer, dateDivider, lockButton } from '../ui/chat.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { appShell } from '../ui/layout.js';
+import { mediaAttachment } from '../ui/media-attachment.js';
 import { mediaPicker } from '../ui/media-picker.js';
 
 const time = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -104,13 +105,29 @@ export function chatScreen({ params, navigate, onDispose }) {
   const body = h('div', { class: 'pane__body' }, feed);
   const composerSlot = h('div', null);
   let stickToBottom = true;
+  let mediaKey = null;
+  let preparingMedia = false;
+  const mediaNodes = new Map();
+
+  function removeMediaNodes(keep = new Set()) {
+    for (const [id, view] of mediaNodes) {
+      if (keep.has(id)) continue;
+      view.dispose();
+      mediaNodes.delete(id);
+    }
+  }
 
   body.addEventListener('scroll', () => {
     stickToBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 80;
   });
 
   function renderFeed() {
-    const hasKey = keysStore.has(dialogId);
+    const key = keysStore.get(dialogId);
+    if (key !== mediaKey) {
+      removeMediaNodes();
+      mediaKey = key;
+    }
+    const hasKey = Boolean(key);
     const state = messagesStore.get(dialogId);
 
     if (!hasKey) {
@@ -141,17 +158,37 @@ export function chatScreen({ params, navigate, onDispose }) {
     }
 
     if (state.items.length === 0) {
+      removeMediaNodes();
       feed.replaceChildren(h('p', { class: 'feed-notice' }, 'Сообщений пока нет. Они шифруются на ваших устройствах — сервер видит только шифротекст.'));
       return;
     }
 
     const nodes = [];
+    const visibleMedia = new Set();
     let lastDay = null;
     for (const item of state.items) {
       const day = dayLabel(item.sentAt);
       if (day !== lastDay) {
         nodes.push(dateDivider(day));
         lastDay = day;
+      }
+      let media;
+      if (item.text === '') {
+        if (item.status === 'sending' || item.status === 'failed') {
+          media = h('span', { class: 'bubble__text' }, 'Вложение');
+        } else {
+          visibleMedia.add(item.id);
+          let view = mediaNodes.get(item.id);
+          if (view && view.envelope !== item.envelope) {
+            view.dispose();
+            view = null;
+          }
+          if (!view) {
+            view = { ...mediaAttachment(dialogId, item, key), envelope: item.envelope };
+            mediaNodes.set(item.id, view);
+          }
+          media = view.node;
+        }
       }
       nodes.push(
         bubble(
@@ -165,12 +202,14 @@ export function chatScreen({ params, navigate, onDispose }) {
           {
             isNew: item.isNew,
             onRetry: () => messagesStore.deliver(dialogId, item.id),
-            onDelete: () => deleteOne(item),
+            onDelete: item.status === 'sending' ? null : () => deleteOne(item),
+            media,
           },
         ),
       );
       item.isNew = false;
     }
+    removeMediaNodes(visibleMedia);
     feed.replaceChildren(deleteError, ...nodes);
     if (stickToBottom) queueMicrotask(() => (body.scrollTop = body.scrollHeight));
   }
@@ -248,11 +287,31 @@ export function chatScreen({ params, navigate, onDispose }) {
     composer({
       onSend(text) {
         if (picker.file) {
-          // TODO(MSG-38): шифрование файла и метаданных по спецификации
-          // медиа, затем загрузка в AttachmentsController бэкенда.
-          picker.showError('Отправка файлов включится, когда будет согласовано шифрование медиа. Уберите файл, чтобы отправить текст.');
-          return false;
+          if (preparingMedia) return false;
+          if (apiMode === 'mock') {
+            picker.showError('Для отправки файлов нужен запущенный бэкенд.');
+            return false;
+          }
+          const file = picker.file;
+          const problem = textError(text);
+          if (problem) {
+            picker.showError(problem);
+            return false;
+          }
+          preparingMedia = true;
+          picker.showError('');
+          stickToBottom = true;
+          return messagesStore.send(dialogId, text, file).then(() => {
+            if (picker.file === file) picker.clear();
+            return true;
+          }).catch(error => {
+            picker.showError(error instanceof RangeError ? error.message : 'Не удалось подготовить вложение.');
+            return false;
+          }).finally(() => {
+            preparingMedia = false;
+          });
         }
+        if (preparingMedia) return false;
         if (!text) return false;
         const problem = textError(text);
         sendError.textContent = problem ?? '';
@@ -307,7 +366,10 @@ export function chatScreen({ params, navigate, onDispose }) {
     event.preventDefault();
     picker.drop([...event.dataTransfer.files]);
   });
-  onDispose(() => picker.clear());
+  onDispose(() => {
+    picker.clear();
+    removeMediaNodes();
+  });
 
   dialogsStore.subscribe(renderHeader, { owner: lead });
   const stopMessages = messagesStore.subscribe((id) => {

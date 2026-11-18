@@ -16,7 +16,32 @@ function toDialog(dto) {
   return { id: String(dto.id), peerPublicId: dto.companionPublicId, createdAt: dto.createdAt };
 }
 
+function attachmentPath(dialogId, messageId, attachmentId) {
+  const [dialog, message, attachment] = [dialogId, messageId, attachmentId].map(encodeURIComponent);
+  return `/dialogs/${dialog}/messages/${message}/attachments/${attachment}`;
+}
+
+const MEDIA_TIMEOUT_MS = 120_000;
+
 export const httpApi = {
+  attachments: {
+    upload(dialogId, messageId, attachmentId, { body, metadata }) {
+      return request('POST', attachmentPath(dialogId, messageId, attachmentId), {
+        body,
+        headers: { 'X-Attachment-Metadata': metadata },
+        timeout: MEDIA_TIMEOUT_MS,
+      });
+    },
+    metadata(dialogId, messageId, attachmentId, { signal } = {}) {
+      return request('GET', attachmentPath(dialogId, messageId, attachmentId), { signal });
+    },
+    content(dialogId, messageId, attachmentId, { signal } = {}) {
+      return request('GET', `${attachmentPath(dialogId, messageId, attachmentId)}/content`, {
+        binary: true, signal, timeout: MEDIA_TIMEOUT_MS,
+      });
+    },
+  },
+
   auth: {
     // 201 { publicId }. Ошибки: 400 — пароль не подходит.
     async register({ password }) {

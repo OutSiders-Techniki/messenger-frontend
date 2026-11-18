@@ -6,7 +6,7 @@
 import { h } from './dom.js';
 import { icon } from './icons.js';
 
-export const MAX_ATTACHMENT_BYTES = 25_000_000;
+import { isMediaType, MAX_ATTACHMENT_BYTES } from '../crypto/media.js';
 
 const sizeFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
 
@@ -18,8 +18,7 @@ export function formatSize(bytes) {
 
 // Текст ошибки или null, если файл можно прикрепить.
 export function validateMedia(file) {
-  const isMedia = file.type.startsWith('image/') || file.type.startsWith('video/');
-  if (!isMedia) return `«${file.name}» — не фото и не видео. Прикрепить можно только их.`;
+  if (!isMediaType(file.type)) return `Формат файла «${file.name}» не поддерживается.`;
   if (file.size === 0) return `Файл «${file.name}» пустой.`;
   if (file.size > MAX_ATTACHMENT_BYTES) {
     return `«${file.name}» весит ${formatSize(file.size)} — больше лимита 25 МБ. Сожмите видео или выберите файл поменьше.`;
