@@ -26,6 +26,9 @@ function createHub() {
     if (message.dialogId === watchedDialog) await messagesStore.receive(message.dialogId, toMessage(message));
     if (client === hub && !dialogsStore.find(message.dialogId)) await dialogsStore.load({ force: true });
   });
+  client.on('MessageDeleted', ({ dialogId, id }) => {
+    if (client === hub && dialogId && id) messagesStore.applyServerDeletion(dialogId, id);
+  });
   client.onclose(() => {
     if (client !== hub) return;
     setState(navigator.onLine ? 'reconnecting' : 'offline');
@@ -59,7 +62,7 @@ async function resync() {
   if (generation !== session.generation) return;
   await Promise.all([
     dialogsStore.load({ force: true }),
-    watchedDialog ? messagesStore.load(watchedDialog, { silent: true }) : null,
+    watchedDialog ? messagesStore.load(watchedDialog, { silent: true, afterPending: true }) : null,
   ]);
 }
 
