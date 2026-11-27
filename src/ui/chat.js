@@ -124,7 +124,7 @@ export function lockButton({ href, verified = true }) {
 
 // Полоса ввода: кнопка вложений и поле-пилюля. Кнопки «Отправить» нет:
 // Enter — отправить, Shift+Enter — перенос строки.
-export function composer({ onSend, onAttach }) {
+export function composer({ onSend, onAttach, onInput }) {
   const input = h('textarea', {
     class: 'composer__input',
     rows: '1',
@@ -137,7 +137,10 @@ export function composer({ onSend, onAttach }) {
     input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
   }
 
-  input.addEventListener('input', grow);
+  input.addEventListener('input', () => {
+    grow();
+    onInput?.(input.value.trim() !== '');
+  });
   input.addEventListener('keydown', async (event) => {
     if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
     event.preventDefault();

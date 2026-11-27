@@ -12,7 +12,7 @@ import { messagesStore } from '../state/messages.js';
 import { connection } from '../realtime/connection.js';
 import { session } from '../state/session.js';
 import { avatar, button, choiceDialog, formatPublicId, loading } from '../ui/components.js';
-import { bubble, composer, dateDivider, lockButton } from '../ui/chat.js';
+import { bubble, composer, dateDivider, lockButton, typingIndicator } from '../ui/chat.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { appShell } from '../ui/layout.js';
@@ -32,6 +32,9 @@ function dayLabel(timestamp, now = new Date()) {
 }
 
 const STATUS = { sending: 'sending', sent: 'delivered', failed: 'failed' };
+const TYPING_PULSE_MS = 1500;
+const TYPING_IDLE_MS = 2500;
+const TYPING_EXPIRY_MS = 4500;
 
 export function chatScreen({ params, navigate, onDispose }) {
   const { dialogId } = params;
@@ -108,6 +111,50 @@ export function chatScreen({ params, navigate, onDispose }) {
   let mediaKey = null;
   let preparingMedia = false;
   const mediaNodes = new Map();
+  let lastTypingPulse = -Infinity;
+  let typingIdleTimer;
+  let typingExpiryTimer;
+  let peerIndicator = null;
+
+  function stopTyping() {
+    clearTimeout(typingIdleTimer);
+    if (lastTypingPulse === -Infinity) return;
+    lastTypingPulse = -Infinity;
+    connection.reportTyping(dialogId, false);
+  }
+
+  function reportInput(hasText) {
+    if (!hasText) {
+      stopTyping();
+      return;
+    }
+    const now = performance.now();
+    if (now - lastTypingPulse >= TYPING_PULSE_MS && connection.reportTyping(dialogId, true)) {
+      lastTypingPulse = now;
+    }
+    clearTimeout(typingIdleTimer);
+    typingIdleTimer = setTimeout(stopTyping, TYPING_IDLE_MS);
+  }
+
+  function showPeerTyping(isTyping) {
+    clearTimeout(typingExpiryTimer);
+    if (!isTyping || !keysStore.has(dialogId)) {
+      peerIndicator?.remove();
+      peerIndicator = null;
+      return;
+    }
+    if (!peerIndicator) {
+      peerIndicator = typingIndicator();
+      feed.append(peerIndicator);
+      if (stickToBottom) body.scrollTop = body.scrollHeight;
+    }
+    typingExpiryTimer = setTimeout(() => showPeerTyping(false), TYPING_EXPIRY_MS);
+  }
+
+  function replaceFeed(...nodes) {
+    feed.replaceChildren(...nodes);
+    if (peerIndicator) feed.append(peerIndicator);
+  }
 
   function removeMediaNodes(keep = new Set()) {
     for (const [id, view] of mediaNodes) {
@@ -131,6 +178,8 @@ export function chatScreen({ params, navigate, onDispose }) {
     const state = messagesStore.get(dialogId);
 
     if (!hasKey) {
+      stopTyping();
+      showPeerTyping(false);
       composerSlot.replaceChildren();
       feed.replaceChildren(keysStore.restoring
         ? h('div', { class: 'feed-notice' }, loading('Восстанавливаем ключи…'))
@@ -138,15 +187,15 @@ export function chatScreen({ params, navigate, onDispose }) {
       return;
     }
 
-    composerSlot.replaceChildren(chatComposer);
+    if (composerSlot.firstChild !== chatComposer) composerSlot.replaceChildren(chatComposer);
 
     if (state.status === 'loading' || state.status === 'idle') {
-      feed.replaceChildren(h('div', { class: 'feed-notice' }, loading('Загружаем и расшифровываем…')));
+      replaceFeed(h('div', { class: 'feed-notice' }, loading('Загружаем и расшифровываем…')));
       return;
     }
 
     if (state.status === 'error') {
-      feed.replaceChildren(
+      replaceFeed(
         h(
           'div',
           { class: 'feed-notice stack stack--sm' },
@@ -159,7 +208,7 @@ export function chatScreen({ params, navigate, onDispose }) {
 
     if (state.items.length === 0) {
       removeMediaNodes();
-      feed.replaceChildren(h('p', { class: 'feed-notice' }, 'Сообщений пока нет. Они шифруются на ваших устройствах — сервер видит только шифротекст.'));
+      replaceFeed(h('p', { class: 'feed-notice' }, 'Сообщений пока нет. Они шифруются на ваших устройствах — сервер видит только шифротекст.'));
       return;
     }
 
@@ -210,7 +259,7 @@ export function chatScreen({ params, navigate, onDispose }) {
       item.isNew = false;
     }
     removeMediaNodes(visibleMedia);
-    feed.replaceChildren(deleteError, ...nodes);
+    replaceFeed(deleteError, ...nodes);
     if (stickToBottom) queueMicrotask(() => (body.scrollTop = body.scrollHeight));
   }
 
@@ -285,6 +334,7 @@ export function chatScreen({ params, navigate, onDispose }) {
     picker.root,
     sendError,
     composer({
+      onInput: reportInput,
       onSend(text) {
         if (picker.file) {
           if (preparingMedia) return false;
@@ -299,6 +349,7 @@ export function chatScreen({ params, navigate, onDispose }) {
             return false;
           }
           preparingMedia = true;
+          stopTyping();
           picker.showError('');
           stickToBottom = true;
           return messagesStore.send(dialogId, text, file).then(() => {
@@ -316,6 +367,7 @@ export function chatScreen({ params, navigate, onDispose }) {
         const problem = textError(text);
         sendError.textContent = problem ?? '';
         if (problem) return false;
+        stopTyping();
         stickToBottom = true;
         messagesStore.send(dialogId, text).catch(() => {
           // Ключ пропал (выход в другой вкладке) — лента сама покажет запрос ключа.
@@ -379,12 +431,24 @@ export function chatScreen({ params, navigate, onDispose }) {
     renderHeader();
     renderFeed();
   });
-  const stopConnection = connection.subscribe(renderBanner);
+  const stopConnection = connection.subscribe((next, previous) => {
+    if (next !== 'online') {
+      stopTyping();
+      showPeerTyping(false);
+    }
+    renderBanner(next, previous);
+  });
+  const unsubscribeTyping = connection.subscribeTyping((id, isTyping) => {
+    if (id === dialogId) showPeerTyping(isTyping);
+  });
   connection.watch(dialogId);
   onDispose(() => {
     stopMessages();
     stopKeys();
     stopConnection();
+    unsubscribeTyping();
+    stopTyping();
+    showPeerTyping(false);
     connection.unwatch(dialogId);
     clearTimeout(hideTimer);
   });

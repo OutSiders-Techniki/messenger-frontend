@@ -13,6 +13,7 @@ let timer = null;
 let watchedDialog = null;
 let running = false;
 let hub = null;
+const typingListeners = new Set();
 
 function createHub() {
   // Long Polling поддерживает доставку событий SignalR через обычный HTTP-прокси.
@@ -28,6 +29,10 @@ function createHub() {
   });
   client.on('MessageDeleted', ({ dialogId, id }) => {
     if (client === hub && dialogId && id) messagesStore.applyServerDeletion(dialogId, id);
+  });
+  client.on('TypingChanged', ({ dialogId, isTyping }) => {
+    if (client !== hub || dialogId !== watchedDialog || typeof isTyping !== 'boolean') return;
+    for (const listener of typingListeners) listener(dialogId, isTyping);
   });
   client.onclose(() => {
     if (client !== hub) return;
@@ -160,6 +165,18 @@ export const connection = {
 
   unwatch(dialogId) {
     if (watchedDialog === dialogId) watchedDialog = null;
+  },
+
+  reportTyping(dialogId, isTyping) {
+    if (dialogId !== watchedDialog || hub?.state !== 'Connected') return false;
+    // Событие кратковременное: при сбое его не нужно отправлять повторно.
+    void hub.invoke('SetTyping', dialogId, isTyping).catch(() => {});
+    return true;
+  },
+
+  subscribeTyping(listener) {
+    typingListeners.add(listener);
+    return () => typingListeners.delete(listener);
   },
 
   // Попробовать прямо сейчас (кнопка «Повторить»).
