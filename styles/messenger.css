@@ -1090,7 +1090,7 @@
   text-align: center;
   background: var(--bg-raised);
   border-radius: var(--radius-sm);
-  user-select: none;
+  user-select: text;
 }
 
 .key-grid__cell--check {

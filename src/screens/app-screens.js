@@ -6,6 +6,7 @@ import { dialogsStore } from '../state/dialogs.js';
 import { keysStore } from '../state/keys.js';
 import { session } from '../state/session.js';
 import { alert, avatar, button, formatPublicId } from '../ui/components.js';
+import { copyControl } from '../ui/copy.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { appShell, pane, paneEmpty } from '../ui/layout.js';
@@ -27,6 +28,8 @@ export function dialogsScreen() {
 // TODO(MSG-39): «Выйти и удалить сохранённые ключи с устройства».
 export function accountScreen() {
   const publicId = session.user?.publicId ?? '';
+  const formattedId = formatPublicId(publicId);
+  const idText = h('p', { class: 'profile__id' }, formattedId);
   return shell(
     pane(
       { title: 'Аккаунт' },
@@ -34,7 +37,8 @@ export function accountScreen() {
         'div',
         { class: 'profile' },
         avatar(publicId, { size: 'xl' }),
-        h('p', { class: 'profile__id' }, formatPublicId(publicId)),
+        h('div', { class: 'user-card__info' }, idText,
+          copyControl(formattedId, { label: 'Скопировать свой ID', target: idText, compact: true })),
         h('p', { class: 'muted text-sm' }, 'Ваш ID — по нему вы входите, а собеседники находят вас.'),
       ),
       h('section', { class: 'card' }, h('h2', { class: 'card__title' }, 'Оформление'), appearanceSettings()),

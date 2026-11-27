@@ -12,6 +12,7 @@ import { messagesStore } from '../state/messages.js';
 import { connection } from '../realtime/connection.js';
 import { session } from '../state/session.js';
 import { avatar, button, choiceDialog, formatPublicId, loading } from '../ui/components.js';
+import { copyControl } from '../ui/copy.js';
 import { bubble, composer, dateDivider, lockButton, typingIndicator } from '../ui/chat.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -59,6 +60,9 @@ export function chatScreen({ params, navigate, onDispose }) {
       lead.replaceChildren(h('span', { class: 'skeleton skeleton--circle skeleton--sm' }));
     }
     lockSlot.replaceChildren(
+      dialog ? copyControl(formatPublicId(dialog.peerPublicId), {
+        label: 'Скопировать ID собеседника', target: title, compact: true,
+      }) : null,
       keysStore.has(dialogId)
         ? h(
             'button',

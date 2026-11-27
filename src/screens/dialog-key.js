@@ -12,6 +12,7 @@ import { takeFlash } from '../state/flash.js';
 import { keysStore } from '../state/keys.js';
 import { session } from '../state/session.js';
 import { alert, avatar, button, checkbox, confirmDialog, formatPublicId } from '../ui/components.js';
+import { copyControl } from '../ui/copy.js';
 import { lockButton } from '../ui/chat.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -115,6 +116,7 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
     pendingBytes?.fill(0);
     pendingBytes = randomKeyBytes();
     const display = await formatKey(pendingBytes);
+    const grid = keyGrid(display);
 
     const remember = checkbox({
       label: 'Не запоминать на этом устройстве',
@@ -150,7 +152,8 @@ export function dialogKeyScreen({ params, navigate, onDispose }) {
       'div',
       { class: 'stack' },
       intro('Новый ключ диалога', 'Покажите ключ собеседнику, пока вы рядом. Он вводит его у себя — по группам, контрольная группа в конце.'),
-      keyGrid(display),
+      grid,
+      copyControl(display, { label: 'Скопировать ключ диалога', target: grid }),
       alert(
         { tone: 'warning', title: 'Ключ показывается один раз' },
         'Не пересылайте его через другие мессенджеры и почту. Потерянный ключ не восстанавливается — вместе с ним теряется переписка.',

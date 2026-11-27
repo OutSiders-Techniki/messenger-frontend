@@ -10,6 +10,7 @@ import { dialogsStore } from '../state/dialogs.js';
 import { putFlash } from '../state/flash.js';
 import { session } from '../state/session.js';
 import { alert, avatar, button, emptyState, field, formatPublicId, loading, setBusy } from '../ui/components.js';
+import { copyControl } from '../ui/copy.js';
 import { h } from '../ui/dom.js';
 import { cooldown, DEFAULT_RETRY_SECONDS, validateFields } from '../ui/form.js';
 import { icon } from '../ui/icons.js';
@@ -114,6 +115,8 @@ export function searchScreen({ navigate, onDispose }) {
   function showFound(user) {
     const isMe = user.publicId === me;
     const existing = dialogsStore.findByPeer(user.publicId);
+    const formattedId = formatPublicId(user.publicId);
+    const idText = h('p', { class: 'user-card__id' }, formattedId);
 
     let action;
     let note;
@@ -141,7 +144,8 @@ export function searchScreen({ navigate, onDispose }) {
         h(
           'div',
           { class: 'user-card__info' },
-          h('p', { class: 'user-card__id' }, formatPublicId(user.publicId)),
+          idText,
+          copyControl(formattedId, { label: 'Скопировать ID пользователя', target: idText, compact: true }),
           isMe ? h('span', { class: 'badge badge--neutral' }, 'Вы') : null,
         ),
         h('p', { class: 'muted text-sm user-card__note' }, note),
