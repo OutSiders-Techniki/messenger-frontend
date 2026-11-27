@@ -130,7 +130,7 @@ export const httpApi = {
   },
 };
 
-function toMessage(dto) {
+export function toMessage(dto) {
   const envelope = dto.envelope ?? { v: dto.v, id: dto.id, sentAt: dto.sentAt, iv: dto.iv, ct: dto.ct };
   return { senderId: dto.senderId ?? dto.senderPublicId, envelope, receivedAt: dto.receivedAt ?? null };
 }

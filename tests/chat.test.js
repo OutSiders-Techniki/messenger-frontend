@@ -70,3 +70,26 @@ test('HTTP chat sends only v1 ciphertext, decrypts server DTOs and deduplicates 
     session.clear();
   }
 });
+
+test('a SignalR deletion wins over an in-flight history response and a late message event', async (t) => {
+  const item = { senderId: vector.context.senderId, envelope: vector.envelope };
+  const wire = { dialogId, senderId: item.senderId, ...item.envelope };
+  let finishHistory;
+  t.mock.method(globalThis, 'fetch', () => new Promise(resolve => { finishHistory = resolve; }));
+  try {
+    session.set({ publicId: bob });
+    await keysStore.set(dialogId, raw(), { remember: false });
+    await messagesStore.receive(dialogId, item);
+    assert.equal(messagesStore.get(dialogId).items.length, 1);
+
+    const history = messagesStore.load(dialogId);
+    messagesStore.applyServerDeletion(dialogId, item.envelope.id);
+    assert.equal(messagesStore.get(dialogId).items.length, 0);
+    finishHistory(Response.json({ items: [wire], nextBeforeId: null, revision: 1 }));
+    await history;
+    await messagesStore.receive(dialogId, item);
+    assert.equal(messagesStore.get(dialogId).items.length, 0);
+  } finally {
+    session.clear();
+  }
+});

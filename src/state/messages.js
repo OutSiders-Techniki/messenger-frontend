@@ -21,7 +21,12 @@ function emit(dialogId) {
 function entry(dialogId) {
   // revision растёт при каждом локальном изменении ленты (отправка, удаление):
   // ответ сервера, запрошенный до изменения, уже устарел и не применяется.
-  if (!dialogs.has(dialogId)) dialogs.set(dialogId, { status: 'idle', items: [], error: null, pending: null, revision: 0 });
+  if (!dialogs.has(dialogId)) {
+    dialogs.set(dialogId, {
+      status: 'idle', items: [], error: null, pending: null,
+      removals: new Set(), deletedIds: new Set(), revision: 0,
+    });
+  }
   return dialogs.get(dialogId);
 }
 
@@ -72,10 +77,18 @@ export const messagesStore = {
 
   // silent — фоновая сверка: без индикатора загрузки.
   // throwOnError — пробросить ошибку сети (для менеджера соединения).
-  async load(dialogId, { silent = false, throwOnError = false } = {}) {
+  async load(dialogId, { silent = false, throwOnError = false, afterPending = false } = {}) {
     const current = entry(dialogId);
-    if (current.pending) return current.pending;
     const generation = session.generation;
+    if (afterPending && current.pending) await current.pending;
+    // Не читаем историю до завершения локального удаления: сервер ещё
+    // может вернуть копию, уже скрытую в интерфейсе.
+    while (current.removals.size) {
+      await Promise.allSettled(current.removals);
+      if (generation !== session.generation) return;
+    }
+    if (generation !== session.generation) return;
+    if (current.pending) return current.pending;
     if (current.status !== 'ready' && !silent) {
       current.status = 'loading';
       current.error = null;
@@ -123,7 +136,7 @@ export const messagesStore = {
           if (previous?.text != null) continue;
           byId.set(item.id, wasReady && !known.has(item.id) ? { ...item, isNew: true } : item);
         }
-        const next = sortItems([...byId.values()]);
+        const next = sortItems([...byId.values()].filter(item => !current.deletedIds.has(item.id)));
         const changed =
           !wasReady ||
           next.length !== current.items.length ||
@@ -155,10 +168,12 @@ export const messagesStore = {
     const key = keysStore.get(dialogId);
     const current = entry(dialogId);
     const revision = current.revision;
+    if (current.deletedIds.has(item.envelope.id)) return;
     const existing = current.items.find(m => m.id === item.envelope.id);
     if (existing?.text != null && !existing.status) return;
     const decrypted = await decryptItem(dialogId, item, key);
     if (generation !== session.generation || revision !== current.revision || key !== keysStore.get(dialogId)) return;
+    if (current.deletedIds.has(decrypted.id)) return;
     const previous = current.items.find(m => m.id === decrypted.id);
     if (previous?.status) {
       if (previous.upload || !samePacket(previous, decrypted) || decrypted.broken) return;
@@ -167,6 +182,17 @@ export const messagesStore = {
       return;
     }
     current.items = sortItems([...current.items.filter(m => m.id !== decrypted.id), { ...decrypted, isNew: !previous }]);
+    emit(dialogId);
+  },
+
+  // Хаб отправляет событие только владельцам удалённых копий.
+  // Помечаем ID до обновления ленты, чтобы запоздавшая история его не вернула.
+  applyServerDeletion(dialogId, id) {
+    const current = dialogs.get(dialogId);
+    if (!current) return;
+    current.deletedIds.add(id);
+    if (!current.items.some(item => item.id === id)) return;
+    current.items = current.items.filter(item => item.id !== id);
     emit(dialogId);
   },
 
@@ -244,19 +270,30 @@ export const messagesStore = {
     // Неотправленные свои удаляем только локально — на сервере их нет.
     const onServer = before.filter((m) => (!targets || targets.has(m.id)) && (m.serverAccepted || (m.status !== 'sending' && m.status !== 'failed')));
     current.items = before.filter((m) => targets && !targets.has(m.id));
-    emit(dialogId);
-
-    try {
+    const removal = Promise.resolve().then(() => {
       if (scope === 'both') {
-        if (onServer.length) await api.messages.deleteBoth(dialogId, onServer.map((m) => m.id));
+        if (onServer.length) return api.messages.deleteBoth(dialogId, onServer.map((m) => m.id));
       } else {
-        await api.messages.deleteSelf(dialogId, ids ?? undefined);
+        return api.messages.deleteSelf(dialogId, ids ?? undefined);
       }
+    });
+    current.removals.add(removal);
+    emit(dialogId);
+    try {
+      await removal;
     } catch (err) {
       current.revision += 1;
-      current.items = before;
+      const byId = new Map(current.items.map(item => [item.id, item]));
+      for (const item of before) {
+        if ((!targets || targets.has(item.id)) && !current.deletedIds.has(item.id) && !byId.has(item.id)) {
+          byId.set(item.id, item);
+        }
+      }
+      current.items = sortItems([...byId.values()]);
       emit(dialogId);
       throw err;
+    } finally {
+      current.removals.delete(removal);
     }
     // Изменение подтверждено сервером — следующий опрос снова актуален.
     current.revision += 1;
